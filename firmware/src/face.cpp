@@ -26,7 +26,7 @@ LV_FONT_DECLARE(font_zh_22);                     // Chinese status-line subset
 // Mood field enums (match the HTML string tags).
 enum { SH_OPEN, SH_HAPPY, SH_CLOSED, SH_SQUINT, SH_TIRED, SH_SPIRAL, SH_WINK };
 enum { BR_NONE, BR_UP, BR_FLAT, BR_FOCUS, BR_ANGRY, BR_WORRIED, BR_TIRED, BR_WOBBLE };
-enum { PU_NONE, PU_SHOCK, PU_CUTE, PU_ORBIT };
+enum { PU_NONE, PU_SHOCK, PU_CUTE, PU_ORBIT, PU_GAZE };
 enum { MO_NONE, MO_SMILE, MO_FROWN, MO_FLAT, MO_O, MO_GRIT, MO_WAVE, MO_TALK };
 enum { EX_NONE, EX_WAVE, EX_DOTS, EX_BUSY, EX_GLOBE, EX_WARN, EX_SWEAT,
        EX_EXCL, EX_SPARKLE, EX_PACK, EX_HEART, EX_ZZZ };
@@ -41,16 +41,16 @@ struct MoodDef {
 // Indexed by face_state_t. Values lifted from clawpet-face.html MOODS + §3.2.
 static const MoodDef MOODS[FACE_STATE_COUNT] = {
 //   color      shape      brow       pupil     mouth     extra       motion   eyeH eyeW gazeY  lid  glow  dim
-/*IDLE*/      {0x7fe9ff, SH_OPEN,   BR_FLAT,   PU_NONE,  MO_SMILE, EX_NONE,    0,        1.00,1.00,  0,  0.00,0.18,0},
+/*IDLE*/      {0x7fe9ff, SH_OPEN,   BR_FLAT,   PU_GAZE,  MO_SMILE, EX_NONE,    0,        1.00,1.00,  0,  0.00,0.18,0},
 /*LISTENING*/ {0xaef3ff, SH_OPEN,   BR_UP,     PU_NONE,  MO_NONE,  EX_WAVE,    0,        1.10,1.05, -2,  0.00,0.22,0},
-/*THINKING*/  {0x7fe9ff, SH_OPEN,   BR_UP,     PU_NONE,  MO_NONE,  EX_DOTS,    0,        0.95,1.00,-15,  0.00,0.18,0},
-/*WORKING*/   {0x38e1ff, SH_OPEN,   BR_FOCUS,  PU_NONE,  MO_NONE,  EX_BUSY,    0,        0.60,1.00, 16,  0.32,0.20,0},
-/*SEARCHING*/ {0x46c8ff, SH_OPEN,   BR_FLAT,   PU_NONE,  MO_NONE,  EX_NONE,    M_DART,   0.70,1.00,  2,  0.10,0.18,0},
+/*THINKING*/  {0x7fe9ff, SH_OPEN,   BR_UP,     PU_GAZE,  MO_NONE,  EX_DOTS,    0,        0.95,1.00,-15,  0.00,0.18,0},
+/*WORKING*/   {0x38e1ff, SH_OPEN,   BR_FOCUS,  PU_GAZE,  MO_NONE,  EX_BUSY,    0,        0.60,1.00, 16,  0.32,0.20,0},
+/*SEARCHING*/ {0x46c8ff, SH_OPEN,   BR_FLAT,   PU_GAZE,  MO_NONE,  EX_NONE,    M_DART,   0.70,1.00,  2,  0.10,0.18,0},
 /*BROWSING*/  {0x34d3c0, SH_OPEN,   BR_UP,     PU_ORBIT, MO_NONE,  EX_GLOBE,   0,        1.00,1.00,  0,  0.00,0.20,0},
 /*DANGER*/    {0xff5a5a, SH_OPEN,   BR_ANGRY,  PU_SHOCK, MO_GRIT,  EX_WARN,    M_SHAKE,  1.35,1.15, -2,  0.00,0.34,0},
 /*PERMISSION*/{0xffb020, SH_OPEN,   BR_UP,     PU_CUTE,  MO_O,     EX_EXCL,    M_BOB,    1.20,1.08, -4,  0.00,0.34,0},
-/*DENIED*/    {0x6b7180, SH_OPEN,   BR_WORRIED,PU_NONE,  MO_FROWN, EX_NONE,    0,        0.55,1.00, 16,  0.40,0.08,0},
-/*BORED*/     {0xaeb4c6, SH_OPEN,   BR_FLAT,   PU_NONE,  MO_FLAT,  EX_NONE,    M_WANDER, 0.50,1.00,  6,  0.45,0.10,0},
+/*DENIED*/    {0x6b7180, SH_OPEN,   BR_WORRIED,PU_GAZE,  MO_FROWN, EX_NONE,    0,        0.55,1.00, 16,  0.40,0.08,0},
+/*BORED*/     {0xaeb4c6, SH_OPEN,   BR_FLAT,   PU_GAZE,  MO_FLAT,  EX_NONE,    M_WANDER, 0.50,1.00,  6,  0.45,0.10,0},
 /*AUTHOK*/    {0x2ee6a0, SH_WINK,   BR_UP,     PU_NONE,  MO_SMILE, EX_SPARKLE, 0,        1.00,1.00,  0,  0.00,0.24,0},
 /*DONE*/      {0x2ee6a0, SH_HAPPY,  BR_UP,     PU_NONE,  MO_SMILE, EX_SPARKLE, 0,        1.00,1.00,  0,  0.00,0.30,0},
 /*SUBDONE*/   {0x59e0a0, SH_WINK,   BR_FLAT,   PU_NONE,  MO_SMILE, EX_NONE,    0,        1.00,1.00,  0,  0.00,0.22,0},
@@ -59,7 +59,7 @@ static const MoodDef MOODS[FACE_STATE_COUNT] = {
 /*COMPACTING*/{0x8b7fff, SH_CLOSED, BR_NONE,   PU_NONE,  MO_NONE,  EX_PACK,    0,        1.00,1.00,  0,  0.00,0.14,0},
 /*TOUCHED*/   {0xff7ab8, SH_HAPPY,  BR_UP,     PU_NONE,  MO_SMILE, EX_HEART,   0,        1.00,1.00,  0,  0.00,0.26,0},
 /*DIZZY*/     {0xb98bff, SH_SPIRAL, BR_WOBBLE, PU_NONE,  MO_WAVE,  EX_NONE,    M_SHAKE,  1.00,1.00,  0,  0.00,0.22,0},
-/*SLEEP*/     {0x7f87a8, SH_CLOSED, BR_NONE,   PU_NONE,  MO_NONE,  EX_ZZZ,     0,        1.00,1.00,  0,  0.00,0.08,0.5},
+/*SLEEP*/     {0x7f87a8, SH_OPEN,   BR_NONE,   PU_GAZE,  MO_NONE,  EX_ZZZ,     0,        0.42,1.00, 16,  0.50,0.08,0.5},
 /*SPEAKING*/  {0x7fe9ff, SH_OPEN,   BR_FLAT,   PU_NONE,  MO_TALK,  EX_NONE,    0,        1.00,1.00,  0,  0.00,0.20,0},
 };
 
@@ -316,7 +316,7 @@ static void configure_mood(face_state_t m) {
         case SH_OPEN:
             show(e_body[i], true);
             show(e_pupil[i], cur_pupil != PU_NONE);
-            show(e_pupil2[i], cur_pupil == PU_CUTE);
+            show(e_pupil2[i], cur_pupil == PU_CUTE || cur_pupil == PU_GAZE);
             break;
         case SH_HAPPY: case SH_CLOSED: case SH_TIRED:
             lv_obj_set_style_line_width(e_curve[i], (int)(sh == SH_TIRED ? Z(9) : Z(11)), 0);
@@ -434,6 +434,22 @@ static void render_eye(int idx, int sh, float ex, float cy, float bw, float bh,
             place_box(e_pupil2[idx], bw * 0.66f, bh * 0.56f, 2 * r2, 2 * r2);
             lv_obj_set_style_bg_color(e_pupil2[idx], lv_color_white(), 0);
             lv_obj_set_style_opa(e_pupil2[idx], (lv_opa_t)(base * 0.7f), 0);
+        } else if (cur_pupil == PU_GAZE) {
+            // Dark eyeball that "looks": gaze maps into the eye-local travel box,
+            // so the body holds still while the pupil tracks (see engine_render).
+            float nx = A.gazeX / 30.0f; if (nx < -1) nx = -1; if (nx > 1) nx = 1;
+            float ny = A.gazeY / 18.0f; if (ny < -1) ny = -1; if (ny > 1) ny = 1;
+            float pr = bw * 0.18f;
+            float mx = bw * 0.5f - pr - Z(3); if (mx < 0) mx = 0;
+            float my = bh * 0.5f - pr - Z(3); if (my < 0) my = 0;
+            float px = bw / 2 + nx * mx, py = bh / 2 + ny * my;
+            place_box(e_pupil[idx], px, py, 2 * pr, 2 * pr);
+            lv_obj_set_style_bg_color(e_pupil[idx], lv_color_hex(0x04050a), 0);
+            lv_obj_set_style_opa(e_pupil[idx], base, 0);
+            float cr = pr * 0.42f;                          // upper-left catchlight
+            place_box(e_pupil2[idx], px - pr * 0.36f, py - pr * 0.42f, 2 * cr, 2 * cr);
+            lv_obj_set_style_bg_color(e_pupil2[idx], lv_color_white(), 0);
+            lv_obj_set_style_opa(e_pupil2[idx], base, 0);
         }
     } else if (sh == SH_HAPPY) {
         quad_pts(pE_curve[idx], QN, ex - Z(26), cy + Z(8), ex, cy - Z(26), ex + Z(26), cy + Z(8));
@@ -592,12 +608,16 @@ static void engine_render(void) {
     float shake = (MOODS[shown].motion & M_SHAKE) ? sinf(tsec * 38) * Z(3) : 0;
     float ease = ssmooth(tphase);
 
+    // PU_GAZE states keep the eye body put and let the pupil do the looking
+    // (handled in render_eye); other states still gaze by sliding the whole eye.
+    bool gazePupil = (cur_pupil == PU_GAZE);
     float bw = Z(58) * A.eyeW;
     float bh = Z(78) * A.eyeH * blinkScale * breathe * fmaxf(0.06f, ease);
     float gap = Z(70);
-    float cy = CY + Z(A.gazeY) + bob + shake;
+    float cy = CY + bob + shake + (gazePupil ? 0 : Z(A.gazeY));
     float lx = CX - gap, rx = CX + gap;
-    float gxL = lx + Z(A.gazeX), gxR = rx + Z(A.gazeX);
+    float shiftX = gazePupil ? 0 : Z(A.gazeX);
+    float gxL = lx + shiftX, gxR = rx + shiftX;
     lv_opa_t eyeOpa = OA(dimf);
 
     render_eye(0, eye_shape_for(cur_shape, 0), gxL, cy, bw, bh, c, eyeOpa, tsec);
