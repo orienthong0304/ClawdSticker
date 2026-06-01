@@ -11,7 +11,7 @@ babysitting the terminal.
 
 English · [中文](#中文)
 
-[**⬇️ Download the macOS app**](https://github.com/orienthong0304/Clawdmeter/releases/latest) ·
+[**⬇️ Download the macOS app**](https://github.com/orienthong0304/ClawdSticker/releases/latest) ·
 [Recommended hardware](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-1.8)
 
 <sub>Fork of [HermannBjorgvin/Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) — the
@@ -105,7 +105,7 @@ On boot the device shows the `idle` face and starts advertising over BLE as
 
 ### 2 · Install the ClawdSticker app
 
-1. **[Download the latest `.dmg`](https://github.com/orienthong0304/Clawdmeter/releases/latest)**,
+1. **[Download the latest `.dmg`](https://github.com/orienthong0304/ClawdSticker/releases/latest)**,
    open it, and drag **ClawdSticker** into Applications.
 2. The build is **unsigned** (no Apple notarization), so clear the download
    quarantine once:
@@ -260,7 +260,7 @@ display. See [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md).
 当 Claude Code 在思考、干活、等你确认、完成或报错时,屏幕上的脸会换表情,关键
 时刻还会响提示音 —— 你不用再盯着终端。
 
-[**⬇️ 下载 macOS 应用**](https://github.com/orienthong0304/Clawdmeter/releases/latest) ·
+[**⬇️ 下载 macOS 应用**](https://github.com/orienthong0304/ClawdSticker/releases/latest) ·
 [推荐购买的开发板](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-1.8)
 
 > Fork 自 [HermannBjorgvin/Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter)。
@@ -342,7 +342,7 @@ pio run -d firmware -e waveshare_amoled_18 -t upload --upload-port /dev/cu.usbmo
 
 ### 2 · 安装 ClawdSticker 应用
 
-1. **[下载最新 `.dmg`](https://github.com/orienthong0304/Clawdmeter/releases/latest)**,
+1. **[下载最新 `.dmg`](https://github.com/orienthong0304/ClawdSticker/releases/latest)**,
    打开后把 **ClawdSticker** 拖进「应用程序」。
 2. 这是**未签名**构建(没做 Apple 公证),首次需清一次下载隔离标记:
    ```bash
