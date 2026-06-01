@@ -22,3 +22,6 @@ __pycache__/
 
 # Mac bridge venv & runtime
 bridge/.venv/
+
+# Mac desktop console app venv
+desktop/.venv/

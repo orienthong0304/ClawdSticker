@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clawdmeter Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/console.css">
+</head>
+<body>
+  <div class="top">
+    <div class="brand">
+      <div class="kicker">desk-buddy control</div>
+      <h1>Claw<span class="x">dmeter</span> 控制台</h1>
+    </div>
+    <div class="pill" id="pill"><span class="dot"></span><span id="pillText">offline</span></div>
+  </div>
+
+  <div class="modebar">
+    <div class="seg" id="seg">
+      <button data-mode="auto" class="on">跟随 Claude Code</button>
+      <button data-mode="manual">手动</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="glow" id="glow"></div>
+    <div class="device"><canvas id="face" width="472" height="576"></canvas></div>
+    <div class="nameplate">
+      <span><b id="npLabel">待命</b></span>
+      <span id="npId" style="color:var(--dim)">idle</span>
+      <span class="src" id="npSrc" style="display:none">manual</span>
+    </div>
+  </div>
+
+  <div class="controls" id="controls"></div>
+
+  <div class="cuebar">
+    <div class="gh">测试提示音 · 推送即响</div>
+    <div class="cuerow" id="cuerow"></div>
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <script src="js/moods.js"></script>
+  <script src="js/face.js"></script>
+  <script src="js/console.js"></script>
+  <script src="js/bridge.js"></script>
+</body>
+</html>
