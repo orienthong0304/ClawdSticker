@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Claude Code 桌面伴侣 · 表情预览 v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#08080b; --ink:#e8e8ef; --dim:#6b6b78;
+    --line:#1c1c22; --accent:#d97757;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    background:radial-gradient(900px 600px at 50% 16%, #15151c 0%, transparent 70%), var(--bg);
+    color:var(--ink); font-family:'JetBrains Mono',monospace;
+    display:flex; flex-direction:column; align-items:center;
+    min-height:100%; padding:24px 16px 44px; overflow-x:hidden;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none;
+    background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:46px 46px;
+    -webkit-mask-image:radial-gradient(circle at 50% 28%,#000 0%,transparent 70%);
+            mask-image:radial-gradient(circle at 50% 28%,#000 0%,transparent 70%);
+    opacity:.32;
+  }
+  .topline{font-size:10px;letter-spacing:.32em;color:var(--dim);text-transform:uppercase;margin-bottom:6px;}
+  h1{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;text-align:center;margin-bottom:4px;}
+  h1 b{color:var(--accent);}
+  .sub{font-size:10.5px;color:var(--dim);margin-bottom:20px;}
+
+  /* ---------- device : 368x448 ratio ---------- */
+  .bezel{
+    --w:clamp(216px,62vw,272px);
+    --h:calc(var(--w) * 448 / 368);
+    width:calc(var(--w) + 26px); height:calc(var(--h) + 26px);
+    border-radius:34px;
+    background:linear-gradient(150deg,#34343c 0%,#101013 46%,#000 100%);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 0 1px #3a3a42,0 26px 60px -12px #000,
+      inset 0 2px 3px rgba(255,255,255,.10),inset 0 -10px 22px rgba(0,0,0,.9);
+    position:relative;
+  }
+  /* power + boot side buttons */
+  .bezel::before,.bezel::after{
+    content:"";position:absolute;right:-3px;width:3px;height:34px;
+    background:linear-gradient(#3a3a42,#1a1a1f);border-radius:2px;
+  }
+  .bezel::before{top:32%;}
+  .bezel::after{top:48%;height:24px;}
+
+  .screen{
+    width:var(--w);height:var(--h);border-radius:22px;
+    background:#000;overflow:hidden;position:relative;
+    container-type:size;
+    box-shadow:inset 0 0 22px rgba(0,0,0,.95);
+    cursor:pointer;
+  }
+  .screen::after{
+    content:"";position:absolute;inset:0;border-radius:22px;
+    background:linear-gradient(145deg,rgba(255,255,255,.06) 0%,transparent 36%);
+    pointer-events:none;z-index:20;
+  }
+
+  .glow{
+    position:absolute;left:50%;top:42%;
+    width:84cqw;height:84cqw;transform:translate(-50%,-50%);
+    border-radius:50%;
+    background:radial-gradient(circle,var(--c) 0%,transparent 66%);
+    opacity:0;filter:blur(4px);transition:opacity .5s;
+  }
+
+  /* ---- the face ---- */
+  .stage{
+    position:absolute;left:0;right:0;top:0;bottom:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:7cqh;
+  }
+  .bob{animation:bob 5s ease-in-out infinite;}
+  @keyframes bob{0%,100%{transform:translateY(-1.4cqh);}50%{transform:translateY(1.4cqh);}}
+
+  .face{
+    position:relative;
+    width:62cqw;height:32cqw;
+    display:flex;align-items:center;justify-content:center;gap:13cqw;
+    transition:transform .3s;
+  }
+  .eye{position:relative;width:17cqw;height:26cqw;
+    display:flex;align-items:center;justify-content:center;}
+  .lid{
+    width:100%;height:100%;background:var(--c);
+    border-radius:8cqw;
+    box-shadow:0 0 7cqw var(--c),0 0 14cqw color-mix(in srgb,var(--c) 50%,transparent);
+    transform-origin:center;position:relative;
+  }
+  /* shine dot in eye */
+  .lid::after{
+    content:"";position:absolute;top:16%;left:20%;
+    width:30%;height:24%;border-radius:50%;
+    background:rgba(255,255,255,.9);filter:blur(.4px);
+  }
+  .happy{
+    position:absolute;width:19cqw;height:11cqw;
+    border:4cqw solid var(--c);border-bottom:none;
+    border-radius:19cqw 19cqw 0 0;
+    box-shadow:0 0 5cqw var(--c);display:none;
+  }
+  .cross{position:absolute;width:15cqw;height:15cqw;display:none;}
+  .cross::before,.cross::after{
+    content:"";position:absolute;top:50%;left:0;width:100%;height:3.4cqw;
+    border-radius:2cqw;background:var(--c);box-shadow:0 0 4cqw var(--c);
+  }
+  .cross::before{transform:translateY(-50%) rotate(45deg);}
+  .cross::after{transform:translateY(-50%) rotate(-45deg);}
+
+  /* mouth */
+  .mouth{
+    width:0;height:0;opacity:0;
+    border-radius:0 0 8cqw 8cqw;
+    background:var(--c);transition:opacity .3s;
+  }
+  /* brows */
+  .brow{
+    position:absolute;top:-2cqw;width:16cqw;height:3.4cqw;
+    border-radius:3cqw;background:var(--c);
+    box-shadow:0 0 3cqw var(--c);opacity:0;transition:opacity .3s;
+  }
+  .brow.l{left:4cqw;}
+  .brow.r{right:4cqw;}
+
+  /* perimeter progress (working) */
+  .ring{position:absolute;left:50%;top:50%;width:74cqw;height:74cqw;
+    transform:translate(-50%,-50%) rotate(-90deg);
+    opacity:0;transition:opacity .4s;}
+  .ring circle{fill:none;stroke:var(--c);stroke-width:3;
+    stroke-linecap:round;stroke-dasharray:62 999;}
+
+  /* thinking dots */
+  .dots{display:flex;gap:3cqw;opacity:0;height:5cqw;}
+  .dots span{width:5cqw;height:5cqw;border-radius:50%;
+    background:var(--c);box-shadow:0 0 3cqw var(--c);}
+
+  /* status text */
+  .statusline{
+    font-size:5.4cqw;letter-spacing:.04em;color:var(--c);
+    opacity:0;white-space:nowrap;filter:brightness(1.15);
+    font-weight:500;
+  }
+  .statename{
+    position:absolute;top:8cqh;left:0;right:0;text-align:center;
+    font-size:4.2cqw;letter-spacing:.34em;text-transform:uppercase;
+    color:var(--c);opacity:.55;
+  }
+
+  /* sparks */
+  .spark{position:absolute;width:3cqw;height:3cqw;background:var(--c);
+    border-radius:50%;opacity:0;box-shadow:0 0 3cqw var(--c);}
+
+  /* ============ STATES ============ */
+  /* IDLE */
+  [data-state="idle"]{--c:#cdd6f4;}
+  [data-state="idle"] .glow{opacity:.14;}
+  [data-state="idle"] .lid{animation:blink 5s ease-in-out infinite;}
+  @keyframes blink{0%,91%,100%{transform:scaleY(1);}94%,96%{transform:scaleY(.08);}}
+
+  /* THINKING */
+  [data-state="thinking"]{--c:#7dd3fc;}
+  [data-state="thinking"] .glow{opacity:.2;}
+  [data-state="thinking"] .face{animation:lookA 3s ease-in-out infinite;}
+  @keyframes lookA{0%,100%{transform:translateX(-3.2cqw);}50%{transform:translateX(3.2cqw);}}
+  [data-state="thinking"] .lid{animation:blink 4s ease-in-out infinite;}
+  [data-state="thinking"] .brow{opacity:.9;}
+  [data-state="thinking"] .brow.l{transform:rotate(-12deg) translateY(-.5cqw);}
+  [data-state="thinking"] .brow.r{transform:rotate(12deg) translateY(-.5cqw);}
+  [data-state="thinking"] .dots{opacity:1;}
+  [data-state="thinking"] .dots span{animation:dotjump 1.2s ease-in-out infinite;}
+  [data-state="thinking"] .dots span:nth-child(2){animation-delay:.15s;}
+  [data-state="thinking"] .dots span:nth-child(3){animation-delay:.3s;}
+  @keyframes dotjump{0%,60%,100%{transform:translateY(0);opacity:.4;}30%{transform:translateY(-3cqw);opacity:1;}}
+  [data-state="thinking"] .statusline{opacity:.7;}
+
+  /* WORKING */
+  [data-state="working"]{--c:#5b9dff;}
+  [data-state="working"] .glow{opacity:.26;animation:pg 1.4s ease-in-out infinite;}
+  @keyframes pg{0%,100%{opacity:.18;}50%{opacity:.32;}}
+  [data-state="working"] .lid{height:62%;animation:wp 1.3s ease-in-out infinite;}
+  @keyframes wp{0%,100%{transform:scaleX(1);}50%{transform:scaleX(1.14);}}
+  [data-state="working"] .ring{opacity:1;animation:rspin 1.4s linear infinite;}
+  @keyframes rspin{to{transform:translate(-50%,-50%) rotate(270deg);}}
+  [data-state="working"] .statusline{opacity:.82;}
+
+  /* WAITING */
+  [data-state="waiting"]{--c:#f5b53d;}
+  [data-state="waiting"] .glow{opacity:.3;animation:pg 1s ease-in-out infinite;}
+  [data-state="waiting"] .bob{animation:bob 5s ease-in-out infinite,nudge 1.4s ease-in-out infinite;}
+  @keyframes nudge{0%,100%{margin-left:0;}20%{margin-left:-3cqw;}40%{margin-left:3cqw;}60%{margin-left:-2cqw;}80%{margin-left:1.4cqw;}}
+  [data-state="waiting"] .lid{transform:scale(1.16);animation:blink 3s ease-in-out infinite;}
+  [data-state="waiting"] .brow{opacity:.95;}
+  [data-state="waiting"] .brow.l{transform:rotate(14deg);}
+  [data-state="waiting"] .brow.r{transform:rotate(-14deg);}
+  [data-state="waiting"] .mouth{opacity:1;width:9cqw;height:9cqw;border-radius:50%;
+    animation:talk 1.4s ease-in-out infinite;}
+  @keyframes talk{0%,100%{height:5cqw;}50%{height:11cqw;}}
+  [data-state="waiting"] .statusline{opacity:.88;}
+
+  /* DONE */
+  [data-state="done"]{--c:#46d68a;}
+  [data-state="done"] .glow{opacity:.3;animation:dg 1.6s ease-out;}
+  @keyframes dg{0%{opacity:.7;}100%{opacity:.26;}}
+  [data-state="done"] .lid{display:none;}
+  [data-state="done"] .happy{display:block;animation:hpop .5s ease-out;}
+  @keyframes hpop{0%{transform:scale(.3) translateY(3cqw);}60%{transform:scale(1.15);}100%{transform:scale(1);}}
+  [data-state="done"] .mouth{opacity:1;width:14cqw;height:7cqw;
+    border-radius:0 0 9cqw 9cqw;animation:smile .5s ease-out;}
+  @keyframes smile{0%{transform:scaleX(.2);}100%{transform:scaleX(1);}}
+  [data-state="done"] .statusline{opacity:.88;}
+  [data-state="done"] .spark{animation:spk 1.6s ease-out infinite;}
+  @keyframes spk{0%{opacity:0;transform:scale(0);}35%{opacity:1;transform:scale(1.3);}70%,100%{opacity:0;transform:scale(.4);}}
+
+  /* ERROR */
+  [data-state="error"]{--c:#f06a5e;}
+  [data-state="error"] .glow{opacity:.24;}
+  [data-state="error"] .bob{animation:none;transform:translateY(2cqw) rotate(-3deg);}
+  [data-state="error"] .lid{display:none;}
+  [data-state="error"] .cross{display:block;animation:shk .4s ease-out;}
+  @keyframes shk{0%{transform:scale(.4) rotate(40deg);opacity:0;}100%{transform:scale(1) rotate(0);opacity:1;}}
+  [data-state="error"] .brow{opacity:.95;}
+  [data-state="error"] .brow.l{transform:rotate(20deg) translateY(1cqw);}
+  [data-state="error"] .brow.r{transform:rotate(-20deg) translateY(1cqw);}
+  [data-state="error"] .mouth{opacity:1;width:11cqw;height:6cqw;
+    border-radius:6cqw 6cqw 0 0;transform:translateY(2cqw);}
+  [data-state="error"] .statusline{opacity:.88;}
+
+  /* SPEAKING */
+  [data-state="speaking"]{--c:#c08bf0;}
+  [data-state="speaking"] .glow{opacity:.28;animation:pg .5s ease-in-out infinite;}
+  [data-state="speaking"] .lid{height:78%;animation:blink 3.5s ease-in-out infinite;}
+  [data-state="speaking"] .mouth{opacity:1;width:13cqw;background:var(--c);
+    border-radius:7cqw;animation:speak .32s ease-in-out infinite;}
+  @keyframes speak{0%,100%{height:4cqw;}50%{height:13cqw;}}
+  [data-state="speaking"] .statusline{opacity:.85;}
+
+  .voice{margin-top:22px;min-height:48px;display:flex;flex-direction:column;
+    align-items:center;gap:6px;text-align:center;}
+  .vstate{font-size:10px;letter-spacing:.3em;text-transform:uppercase;
+    color:var(--vc,#888);transition:color .4s;}
+  .vsay{font-size:14px;color:var(--ink);max-width:300px;line-height:1.5;}
+  .vsay::before{content:"\201C";color:var(--dim);}
+  .vsay::after{content:"\201D";color:var(--dim);}
+  .vsay.empty{color:var(--dim);}
+  .vsay.empty::before,.vsay.empty::after{content:"";}
+
+  .controls{margin-top:22px;display:grid;grid-template-columns:repeat(4,1fr);
+    gap:8px;width:100%;max-width:392px;}
+  .btn{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;
+    padding:11px 4px;border-radius:11px;cursor:pointer;
+    background:#121217;color:var(--dim);border:1px solid var(--line);
+    transition:.16s;display:flex;flex-direction:column;align-items:center;gap:5px;}
+  .btn .dot{width:7px;height:7px;border-radius:50%;background:currentColor;}
+  .btn:active{transform:scale(.94);}
+  .btn.on{background:#1b1b22;color:var(--bc);
+    border-color:color-mix(in srgb,var(--bc) 55%,transparent);
+    box-shadow:0 0 16px -4px var(--bc);}
+
+  .bar{margin-top:14px;width:100%;max-width:392px;}
+  .auto{width:100%;font-family:'JetBrains Mono',monospace;font-size:11.5px;
+    padding:11px;border-radius:10px;cursor:pointer;background:transparent;
+    color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);
+    transition:.16s;letter-spacing:.04em;}
+  .auto.on{background:var(--accent);color:#160d09;font-weight:700;}
+  .auto:active{transform:scale(.98);}
+
+  .hint{margin-top:16px;font-size:10.5px;color:var(--dim);
+    text-align:center;line-height:1.7;max-width:340px;}
+  .hint code{color:var(--accent);background:#15151b;padding:1px 5px;
+    border-radius:4px;font-size:10px;}
+</style>
+</head>
+<body>
+
+  <div class="topline">desk buddy · firmware ui preview</div>
+  <h1>Claude Code <b>桌面伴侣</b></h1>
+  <div class="sub">368 × 448 AMOLED · 模拟 1.8" 真机比例</div>
+
+  <div class="bezel">
+    <div class="screen" id="screen" data-state="idle">
+      <div class="glow"></div>
+      <div class="statename" id="statename">IDLE</div>
+
+      <svg class="ring" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46"></circle></svg>
+
+      <div class="stage">
+        <div class="bob">
+          <div class="face">
+            <div class="brow l"></div>
+            <div class="brow r"></div>
+            <div class="eye">
+              <div class="lid"></div>
+              <div class="happy"></div>
+              <div class="cross"></div>
+            </div>
+            <div class="eye">
+              <div class="lid"></div>
+              <div class="happy"></div>
+              <div class="cross"></div>
+            </div>
+          </div>
+          <div style="height:5cqh"></div>
+          <div class="mouth" style="margin:0 auto"></div>
+          <div class="dots" style="margin:3cqh auto 0"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+
+      <div class="spark" style="left:20%;top:34%"></div>
+      <div class="spark" style="left:76%;top:30%;animation-delay:.25s"></div>
+      <div class="spark" style="left:82%;top:60%;animation-delay:.5s"></div>
+      <div class="spark" style="left:16%;top:62%;animation-delay:.7s"></div>
+      <div class="spark" style="left:50%;top:22%;animation-delay:.4s"></div>
+
+      <div class="statusline" id="statusline" style="position:absolute;left:50%;bottom:9cqh;transform:translateX(-50%)"></div>
+    </div>
+  </div>
+
+  <div class="voice">
+    <div class="vstate" id="vstate">IDLE</div>
+    <div class="vsay" id="vsay">待命中</div>
+  </div>
+
+  <div class="controls" id="controls"></div>
+  <div class="bar"><button class="auto" id="auto">▶ 自动演示全部状态</button></div>
+
+  <p class="hint">
+    点屏幕循环切换。每个状态 = 固件里一套 LVGL 表情动画，
+    由 <code>set_state()</code> MCP 工具或 Claude Code hook 触发。
+  </p>
+
+<script>
+  const STATES={
+    idle:    {label:'待命',  vstate:'IDLE',    say:'待命中，随时待命',        status:'',                color:'#cdd6f4', empty:true},
+    thinking:{label:'思考',  vstate:'THINKING',say:'让我想想该怎么做…',        status:'thinking…',       color:'#7dd3fc'},
+    working: {label:'执行',  vstate:'WORKING', say:'正在执行任务，请稍候',      status:'running build…',  color:'#5b9dff'},
+    waiting: {label:'待确认',vstate:'WAITING', say:'这一步需要你确认一下',      status:'awaiting input',  color:'#f5b53d'},
+    speaking:{label:'说话',  vstate:'SPEAKING',say:'我有话想跟你说～',          status:'speaking…',       color:'#c08bf0'},
+    done:    {label:'完成',  vstate:'DONE',    say:'任务搞定啦！',             status:'completed ✓',     color:'#46d68a'},
+    error:   {label:'出错',  vstate:'ERROR',   say:'出错了，过来看一眼吧',      status:'exit code 1',     color:'#f06a5e'},
+  };
+  const ORDER=['idle','thinking','working','waiting','speaking','done','error'];
+
+  const screen=document.getElementById('screen');
+  const statusline=document.getElementById('statusline');
+  const statename=document.getElementById('statename');
+  const vstate=document.getElementById('vstate');
+  const vsay=document.getElementById('vsay');
+  const controls=document.getElementById('controls');
+  const autoBtn=document.getElementById('auto');
+
+  ORDER.forEach(key=>{
+    const s=STATES[key];
+    const b=document.createElement('button');
+    b.className='btn'; b.dataset.key=key;
+    b.style.setProperty('--bc',s.color);
+    b.innerHTML=`<span class="dot" style="background:${s.color}"></span>${s.label}`;
+    b.onclick=()=>{stopAuto();setState(key);};
+    controls.appendChild(b);
+  });
+
+  function setState(key){
+    const s=STATES[key];
+    screen.dataset.state=key;
+    statusline.textContent=s.status;
+    statename.textContent=s.vstate;
+    vstate.textContent=s.vstate;
+    vstate.style.setProperty('--vc',s.color);
+    vsay.textContent=s.say;
+    vsay.classList.toggle('empty',!!s.empty);
+    document.querySelectorAll('.btn').forEach(b=>
+      b.classList.toggle('on',b.dataset.key===key));
+  }
+
+  screen.onclick=()=>{
+    stopAuto();
+    const i=ORDER.indexOf(screen.dataset.state);
+    setState(ORDER[(i+1)%ORDER.length]);
+  };
+
+  let timer=null;
+  function startAuto(){
+    autoBtn.classList.add('on');
+    autoBtn.textContent='■ 停止演示';
+    let i=ORDER.indexOf(screen.dataset.state);
+    timer=setInterval(()=>{i=(i+1)%ORDER.length;setState(ORDER[i]);},2800);
+  }
+  function stopAuto(){
+    if(!timer)return;
+    clearInterval(timer);timer=null;
+    autoBtn.classList.remove('on');
+    autoBtn.textContent='▶ 自动演示全部状态';
+  }
+  autoBtn.onclick=()=>timer?stopAuto():startAuto();
+
+  setState('idle');
+</script>
+</body>
+</html>
