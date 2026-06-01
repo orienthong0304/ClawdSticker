@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClawPet · Claude Code 状态桌宠</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#070809;--panel:#101216;--frame-edge:#2b2f3a;--ink:#e8ecf2;--dim:#7c8493;--line:#21242c;--accent:#38e1ff;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);
+    font-family:"JetBrains Mono",ui-monospace,"PingFang SC","Microsoft YaHei",monospace;
+    min-height:100%;display:flex;flex-direction:column;align-items:center;padding:32px 18px 56px;overflow-x:hidden;
+    background-image:radial-gradient(1200px 600px at 50% -8%, rgba(56,225,255,.05), transparent 60%);}
+  .head{text-align:center;margin-bottom:22px}
+  .kicker{font-size:11px;letter-spacing:.34em;color:var(--dim);text-transform:uppercase}
+  h1{font-size:30px;font-weight:800;letter-spacing:-.01em;margin-top:8px}
+  h1 .x{color:var(--accent);transition:color .4s}
+  .sub{font-size:12.5px;color:var(--dim);margin-top:10px;line-height:1.7;max-width:580px}
+  .stage{position:relative;display:flex;flex-direction:column;align-items:center;margin:6px 0 26px}
+  .glow{position:absolute;inset:-90px;border-radius:50%;
+    background:radial-gradient(closest-side, var(--accent), transparent 72%);
+    opacity:.16;filter:blur(34px);transition:opacity .5s, background .5s;pointer-events:none;z-index:0}
+  .device{position:relative;z-index:1;padding:16px;border-radius:42px;
+    background:linear-gradient(160deg,#23262f,#101218 70%);
+    box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 26px 60px -20px rgba(0,0,0,.8),0 0 0 1px var(--frame-edge)}
+  .device::after{content:"";position:absolute;right:-4px;top:46%;width:5px;height:48px;border-radius:4px;background:linear-gradient(#2b2f3a,#15171d)}
+  canvas{display:block;width:284px;height:346px;border-radius:30px;background:#04050a;
+    box-shadow:0 0 0 1px #000 inset, 0 0 38px -8px var(--accent);transition:box-shadow .5s}
+  .nameplate{text-align:center;font-size:9.5px;letter-spacing:.22em;color:var(--dim);margin-top:13px;text-transform:uppercase}
+  .read{display:flex;gap:22px;align-items:center;justify-content:center;font-size:11.5px;color:var(--dim);margin-bottom:8px;flex-wrap:wrap}
+  .read b{color:var(--ink);font-weight:600}
+  .read .evt{color:var(--accent);transition:color .4s}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);
+    margin-right:7px;box-shadow:0 0 10px var(--accent);transition:background .4s,box-shadow .4s;vertical-align:middle}
+  .footer{display:flex;gap:14px;align-items:center;margin:14px 0 22px}
+  .demo{font-family:inherit;font-size:12px;cursor:pointer;color:var(--ink);background:transparent;
+    border:1px solid var(--line);border-radius:999px;padding:9px 18px;transition:border-color .25s,color .25s}
+  .demo[data-on="1"]{border-color:var(--accent);color:var(--accent)}
+  .hint{font-size:10.5px;color:var(--dim)}
+  .controls{width:100%;max-width:620px;display:flex;flex-direction:column;gap:18px}
+  .group .gh{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 2px 9px;display:flex;align-items:center;gap:8px}
+  .group .gh::after{content:"";flex:1;height:1px;background:var(--line)}
+  .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+  button.evt-btn{font-family:inherit;cursor:pointer;text-align:left;background:var(--panel);color:var(--ink);
+    border:1px solid var(--line);border-radius:13px;padding:11px 11px;transition:transform .12s,border-color .25s,background .25s}
+  button.evt-btn:hover{transform:translateY(-2px);border-color:#3a3f4b;background:#14171d}
+  button.evt-btn:active{transform:translateY(0)}
+  button.evt-btn .nm{display:block;font-size:12.5px;font-weight:700}
+  button.evt-btn .ev{display:block;font-size:9px;color:var(--dim);margin-top:4px;letter-spacing:.01em;line-height:1.3}
+  button.evt-btn[data-on="1"]{border-color:var(--accent);background:rgba(56,225,255,.07)}
+  .swatch{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:middle}
+  @media(max-width:660px){.grid{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:460px){.grid{grid-template-columns:repeat(2,1fr)}h1{font-size:24px}}
+</style>
+</head>
+<body>
+  <div class="head">
+    <div class="kicker">Ambient agent companion</div>
+    <h1>Claw<span class="x">Pet</span></h1>
+    <div class="sub">每个状态都用 眉毛 + 眼型 + 瞳孔 区分,一眼可辨;切换走"眨眼换装",过渡自然。<br>状态来自 Claude Code 钩子事件 + 板载传感器。点任意状态,或开自动演示。</div>
+  </div>
+  <div class="stage">
+    <div class="glow" id="glow"></div>
+    <div class="device"><canvas id="face" width="568" height="692"></canvas>
+      <div class="nameplate">ESP32-S3 · Touch AMOLED 1.8 · 368×448</div></div>
+  </div>
+  <div class="read">
+    <span><span class="dot" id="dot"></span>watching: <b>claude-code</b> + <b>codex</b></span>
+    <span>event: <span class="evt" id="curEvt">SessionStart</span></span>
+    <span>mood: <b id="curMood">醒来</b></span>
+  </div>
+  <div class="footer"><button class="demo" id="demoBtn">▶ 自动演示</button>
+    <span class="hint">真机:钩子态由 HTTP 钩子触发,传感器态由板子自己产生</span></div>
+  <div class="controls" id="controls"></div>
+
+<script>
+const W=284,H=346;
+const cv=document.getElementById('face'),ctx=cv.getContext('2d');
+const DPR=2;cv.width=W*DPR;cv.height=H*DPR;ctx.scale(DPR,DPR);
+const CXm=W/2,CYe=H*0.45;const root=document.documentElement;
+
+/* shape: open|happy|closed|spiral|wink|squint|tired
+   brow:  none|up|flat|focus|angry|worried|tired|wobble
+   pupil: none|shock|cute|orbit
+   mouth: none|smile|frown|flat|grit|o|wave */
+const MOODS={
+  awake:    {label:'醒来',   evt:'SessionStart',                color:'#7fe9ff',shape:'open',  brow:'flat', pupil:'none', mouth:'smile',eyeH:1,  eyeW:1,  gazeY:0, lid:0,  extra:'none', glow:.18},
+  listening:{label:'在听',   evt:'UserPromptSubmit',            color:'#aef3ff',shape:'open',  brow:'up',   pupil:'none', mouth:'none', eyeH:1.1,eyeW:1.05,gazeY:-2,lid:0,  extra:'wave', glow:.22},
+  sleep:    {label:'睡觉',   evt:'SessionEnd',                  color:'#7f87a8',shape:'closed',brow:'none', pupil:'none', mouth:'none', eyeH:1,  eyeW:1,  gazeY:0, lid:0,  extra:'zzz',  glow:.08, dim:.5},
+
+  thinking: {label:'生成中', evt:'MessageDisplay',              color:'#7fe9ff',shape:'open',  brow:'up',   pupil:'none', mouth:'none', eyeH:.95,eyeW:1,  gazeY:-15,lid:0, extra:'dots', glow:.18},
+  working:  {label:'写代码', evt:'PreToolUse · Edit|Write',     color:'#38e1ff',shape:'open',  brow:'focus',pupil:'none', mouth:'none', eyeH:.6, eyeW:1,  gazeY:16,lid:.32,extra:'busy', glow:.20},
+  searching:{label:'找东西', evt:'PreToolUse · Read|Grep',      color:'#46c8ff',shape:'open',  brow:'flat', pupil:'none', mouth:'none', eyeH:.7, eyeW:1,  gazeY:2, lid:.1, extra:'none', glow:.18, dart:1},
+  browsing: {label:'上网查', evt:'PreToolUse · WebFetch',       color:'#34d3c0',shape:'open',  brow:'up',   pupil:'orbit',mouth:'none', eyeH:1,  eyeW:1,  gazeY:0, lid:0,  extra:'globe',glow:.20},
+  danger:   {label:'危险操作!',evt:'PreToolUse · Bash if(rm*)', color:'#ff5a5a',shape:'open',  brow:'angry',pupil:'shock',mouth:'grit', eyeH:1.35,eyeW:1.15,gazeY:-2,lid:0,extra:'warn', glow:.34, shake:1},
+
+  permission:{label:'要你批权限',evt:'Notification·permission_prompt',color:'#ffb020',shape:'open',brow:'up',pupil:'cute',mouth:'o',eyeH:1.2,eyeW:1.08,gazeY:-4,lid:0,extra:'excl',glow:.34,bob:1},
+  denied:   {label:'被拒绝', evt:'PermissionDenied',            color:'#6b7180',shape:'open',  brow:'worried',pupil:'none',mouth:'frown',eyeH:.55,eyeW:1, gazeY:16,lid:.4, extra:'none', glow:.08},
+  waiting:  {label:'发呆等待',evt:'Notification·idle_prompt',   color:'#aeb4c6',shape:'open',  brow:'flat', pupil:'none', mouth:'flat', eyeH:.5, eyeW:1,  gazeY:6, lid:.45,extra:'none', glow:.10, wander:1},
+  authok:   {label:'登录成功',evt:'Notification·auth_success',  color:'#2ee6a0',shape:'wink',  brow:'up',   pupil:'none', mouth:'smile',eyeH:1,  eyeW:1,  gazeY:0, lid:0,  extra:'sparkle',glow:.24},
+
+  done:     {label:'干完了！',evt:'Stop',                       color:'#2ee6a0',shape:'happy', brow:'up',   pupil:'none', mouth:'smile',eyeH:1,  eyeW:1,  gazeY:0, lid:0,  extra:'sparkle',glow:.30},
+  subdone:  {label:'子任务✓',evt:'SubagentStop',                color:'#59e0a0',shape:'wink',  brow:'flat', pupil:'none', mouth:'smile',eyeH:1,  eyeW:1,  gazeY:0, lid:0,  extra:'none', glow:.22},
+  error:    {label:'命令失败',evt:'PostToolUseFailure',         color:'#ff6b6b',shape:'squint',brow:'angry',pupil:'none', mouth:'frown',eyeH:1,  eyeW:1,  gazeY:0, lid:0,  extra:'none', glow:.26, shake:1},
+  rate:     {label:'被限流/累了',evt:'StopFailure · rate_limit', color:'#ff9d3f',shape:'tired', brow:'tired',pupil:'none', mouth:'flat', eyeH:1,  eyeW:1,  gazeY:4, lid:0,  extra:'sweat',glow:.16},
+  compacting:{label:'整理记忆',evt:'PreCompact',                color:'#8b7fff',shape:'closed',brow:'none', pupil:'none', mouth:'none', eyeH:1,  eyeW:1,  gazeY:0, lid:0,  extra:'pack', glow:.14},
+
+  touched:  {label:'摸摸头', evt:'Touch · 电容屏',              color:'#ff7ab8',shape:'happy', brow:'up',   pupil:'none', mouth:'smile',eyeH:1,  eyeW:1,  gazeY:0, lid:0,  extra:'heart',glow:.26},
+  dizzy:    {label:'被摇晕', evt:'IMU · 摇一摇',                color:'#b98bff',shape:'spiral',brow:'wobble',pupil:'none',mouth:'wave', eyeH:1,  eyeW:1,  gazeY:0, lid:0,  extra:'none', glow:.22, shake:1},
+};
+const GROUPS=[
+  {h:'生命周期 · 输入', keys:['awake','listening','sleep']},
+  {h:'思考 & 干活 · PreToolUse/MessageDisplay', keys:['thinking','working','searching','browsing','danger']},
+  {h:'要你出手 · Notification / Permission', keys:['permission','denied','waiting','authok']},
+  {h:'结果 / 异常 / 上下文', keys:['done','subdone','error','rate','compacting']},
+  {h:'桌宠人格 · 触摸 / IMU 传感器', keys:['touched','dizzy']},
+];
+
+let shownKey='awake',queuedKey='awake',target=MOODS.awake;
+let tphase=1,tdir=0;                    // 眨眼换装: 1=睁 0=闭
+const A={eyeH:1,eyeW:1,gazeX:0,gazeY:0,lid:0,glow:.18,dim:0,r:127,g:233,b:255};
+let blink=0,blinkT=1.2,sacT=2,sacX=0,t0=performance.now();
+
+function hex2rgb(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+function lerp(a,b,k){return a+(b-a)*k;}
+function ss(x){x=Math.max(0,Math.min(1,x));return x*x*(3-2*x);}
+function setMood(key){queuedKey=key;
+  document.getElementById('curEvt').textContent=MOODS[key].evt;
+  document.getElementById('curMood').textContent=MOODS[key].label;
+  document.querySelectorAll('.evt-btn').forEach(b=>b.dataset.on=b.dataset.key===key?'1':'0');
+  if(shownKey!==key&&tdir>=0)tdir=-1;}
+
+function frame(now){
+  const t=(now-t0)/1000,dt=Math.min(.05,(now-(frame._l||now))/1000);frame._l=now;
+  const k=1-Math.pow(0.001,dt);
+
+  if(tdir!==0){tphase+=tdir*dt/0.13;
+    if(tphase<=0&&tdir<0){tphase=0;shownKey=queuedKey;target=MOODS[shownKey];tdir=1;}
+    if(tphase>=1&&tdir>0){tphase=1;tdir=0;}}
+  const tg=hex2rgb(target.color);
+  A.eyeH=lerp(A.eyeH,target.eyeH,k);A.eyeW=lerp(A.eyeW,target.eyeW,k);
+  A.gazeY=lerp(A.gazeY,target.gazeY,k);A.lid=lerp(A.lid,target.lid,k);
+  A.glow=lerp(A.glow,(target.glow!=null?target.glow:.18),k);A.dim=lerp(A.dim,target.dim||0,k);
+  A.r=lerp(A.r,tg[0],k);A.g=lerp(A.g,tg[1],k);A.b=lerp(A.b,tg[2],k);
+
+  blinkT-=dt;
+  const openish=(target.shape==='open'||target.shape==='wink');
+  if(blinkT<=0&&openish&&tdir===0){blink=1;blinkT=1.6+Math.random()*3.4;}
+  if(blink>0){blink-=dt*7;if(blink<0)blink=0;}
+  const blinkScale=1-Math.sin(Math.min(1,blink)*Math.PI)*0.92;
+
+  sacT-=dt;
+  if(sacT<=0){
+    if(target.dart){sacX=(Math.random()*2-1)*30;sacT=0.2+Math.random()*0.2;}
+    else if(target.wander){sacX=(Math.random()*2-1)*26;sacT=1+Math.random()*1.2;}
+    else {sacX=(Math.random()*2-1)*7;sacT=2.6+Math.random()*3;}}
+  A.gazeX=lerp(A.gazeX,sacX,target.dart?k:k*.6);
+
+  const breathe=Math.sin(t*1.6)*0.012+1;
+  const bob=target.bob?Math.sin(t*5.5)*5:0;
+  const shake=target.shake?Math.sin(t*38)*3:0;
+  const ease=ss(tphase);
+
+  const col=`rgb(${A.r|0},${A.g|0},${A.b|0})`;
+  root.style.setProperty('--accent',col);
+  document.getElementById('glow').style.opacity=A.glow;
+  draw(t,col,blinkScale,breathe,bob,shake,ease);
+  requestAnimationFrame(frame);
+}
+
+function rr(x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function heart(cx,cy,s,a,c){ctx.save();ctx.globalAlpha=a;ctx.fillStyle=c;ctx.beginPath();
+  ctx.moveTo(cx,cy+s*.9);ctx.bezierCurveTo(cx+s,cy+s*.1,cx+s*.55,cy-s*.7,cx,cy-s*.15);
+  ctx.bezierCurveTo(cx-s*.55,cy-s*.7,cx-s,cy+s*.1,cx,cy+s*.9);ctx.fill();ctx.restore();}
+
+function drawEye(sh,idx,gx,cy,w,h,col,pupil,t){
+  if(sh==='open'){
+    rr(gx-w/2,cy-h/2,w,h,w*0.42);ctx.fill();
+    if(A.lid>0.02){ctx.save();ctx.shadowBlur=0;ctx.fillStyle='#04050a';
+      ctx.fillRect(gx-w/2-2,cy-h/2-2,w+4,h*A.lid);ctx.restore();}
+    if(pupil==='shock'){ctx.save();ctx.shadowBlur=0;ctx.fillStyle='#04050a';
+      ctx.beginPath();ctx.arc(gx,cy,w*0.17,0,7);ctx.fill();ctx.restore();}
+    if(pupil==='orbit'){ctx.save();ctx.shadowBlur=0;ctx.fillStyle='#04050a';const a=t*3;
+      ctx.beginPath();ctx.arc(gx+Math.cos(a)*w*0.18,cy+Math.sin(a)*h*0.16,w*0.2,0,7);ctx.fill();ctx.restore();}
+    if(pupil==='cute'){ctx.save();ctx.shadowBlur=0;ctx.fillStyle='#fff';
+      ctx.beginPath();ctx.arc(gx-w*0.14,cy-h*0.16,w*0.13,0,7);ctx.fill();
+      ctx.globalAlpha=.7;ctx.beginPath();ctx.arc(gx+w*0.16,cy+h*0.06,w*0.07,0,7);ctx.fill();ctx.restore();}
+  }else if(sh==='happy'){ctx.lineWidth=11;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(gx-26,cy+8);ctx.quadraticCurveTo(gx,cy-26,gx+26,cy+8);ctx.stroke();
+  }else if(sh==='closed'){ctx.lineWidth=10;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(gx-26,cy-2);ctx.quadraticCurveTo(gx,cy+16,gx+26,cy-2);ctx.stroke();
+  }else if(sh==='squint'){ctx.lineWidth=10;ctx.lineCap='round';ctx.lineJoin='round';
+    const d=idx===0?1:-1;ctx.beginPath();
+    ctx.moveTo(gx-18*d,cy-16);ctx.lineTo(gx+14*d,cy);ctx.lineTo(gx-18*d,cy+16);ctx.stroke();
+  }else if(sh==='tired'){ctx.lineWidth=9;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(gx-24,cy);ctx.quadraticCurveTo(gx,cy+5,gx+24,cy);ctx.stroke();
+  }else if(sh==='spiral'){ctx.lineWidth=6;ctx.lineCap='round';ctx.beginPath();const ang=t*6;
+    for(let a=0;a<Math.PI*3;a+=0.25){const r2=2+a*2.6;const px=gx+Math.cos(a+ang)*r2;const py=cy+Math.sin(a+ang)*r2;
+      a===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}ctx.stroke();}
+}
+
+function drawBrows(lx,rx,topY,name,alpha,col,t){
+  if(name==='none'||alpha<=0.02)return;
+  ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=col;ctx.shadowColor=col;ctx.shadowBlur=10;
+  ctx.lineWidth=name==='tired'?5:7;ctx.lineCap='round';
+  let iy,oy;
+  if(name==='up'){iy=topY-9;oy=topY-9;}
+  else if(name==='flat'){iy=topY;oy=topY;}
+  else if(name==='focus'){iy=topY+7;oy=topY+2;}
+  else if(name==='angry'){iy=topY+10;oy=topY-7;}
+  else if(name==='worried'){iy=topY-10;oy=topY+5;}
+  else if(name==='tired'){iy=topY+6;oy=topY+6;}
+  else if(name==='wobble'){iy=topY+Math.sin(t*8)*4;oy=topY-Math.sin(t*8)*4;}
+  else{iy=topY;oy=topY;}
+  ctx.beginPath();ctx.moveTo(lx-24,oy);ctx.lineTo(lx+16,iy);ctx.stroke();   // 左眉
+  ctx.beginPath();ctx.moveTo(rx+24,oy);ctx.lineTo(rx-16,iy);ctx.stroke();   // 右眉
+  ctx.restore();
+}
+
+function draw(t,col,blinkScale,breathe,bob,shake,ease){
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#04050a';ctx.fillRect(0,0,W,H);
+  ctx.save();ctx.globalAlpha=1-A.dim;
+
+  const baseW=58*A.eyeW,baseH=78*A.eyeH*blinkScale*breathe*Math.max(0.06,ease);
+  const gap=70,cy=CYe+A.gazeY+bob+shake,lx=CXm-gap,rx=CXm+gap;
+  ctx.shadowColor=col;ctx.shadowBlur=22;ctx.fillStyle=col;ctx.strokeStyle=col;
+
+  const sh=target.shape;
+  [[0,lx],[1,rx]].forEach(([idx,ex])=>{
+    let s=sh;if(sh==='wink')s=idx===0?'happy':'open';
+    drawEye(s,idx,ex+A.gazeX,cy,baseW,baseH,col,target.pupil,t);
+  });
+
+  // 眉毛(随眨眼淡入淡出)
+  drawBrows(lx+A.gazeX,rx+A.gazeX,cy-baseH/2-15,target.brow,ease*(1-A.dim),col,t);
+
+  // 嘴
+  ctx.shadowBlur=14;ctx.lineWidth=7;ctx.lineCap='round';const my=cy+baseH/2+30;
+  ctx.globalAlpha=ease*(1-A.dim);
+  const m=target.mouth;
+  if(m==='smile'){ctx.beginPath();ctx.moveTo(CXm-22,my-6);ctx.quadraticCurveTo(CXm,my+13,CXm+22,my-6);ctx.stroke();}
+  else if(m==='frown'){ctx.beginPath();ctx.moveTo(CXm-20,my+8);ctx.quadraticCurveTo(CXm,my-8,CXm+20,my+8);ctx.stroke();}
+  else if(m==='flat'){ctx.beginPath();ctx.moveTo(CXm-15,my);ctx.lineTo(CXm+15,my);ctx.stroke();}
+  else if(m==='o'){ctx.lineWidth=5;ctx.beginPath();ctx.arc(CXm,my,7,0,7);ctx.stroke();}
+  else if(m==='grit'){ctx.lineWidth=5;rr(CXm-18,my-6,36,12,4);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(CXm-6,my-6);ctx.lineTo(CXm-6,my+6);ctx.moveTo(CXm+6,my-6);ctx.lineTo(CXm+6,my+6);ctx.stroke();}
+  else if(m==='wave'){ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(CXm-18,my);
+    ctx.quadraticCurveTo(CXm-9,my-7,CXm,my);ctx.quadraticCurveTo(CXm+9,my+7,CXm+18,my);ctx.stroke();}
+  ctx.globalAlpha=1-A.dim;
+
+  // 附加元素
+  ctx.shadowBlur=14;const ex=target.extra;
+  if(ex==='excl'){const yy=CYe-92+Math.sin(t*5.5)*4;ctx.fillStyle=col;
+    rr(CXm-5,yy,10,30,5);ctx.fill();ctx.beginPath();ctx.arc(CXm,yy+44,6,0,7);ctx.fill();}
+  if(ex==='busy'){for(let i=0;i<3;i++){const a=(Math.sin(t*4-i*0.7)+1)/2;
+    ctx.globalAlpha=(1-A.dim)*(0.25+a*0.75);ctx.beginPath();ctx.arc(CXm-22+i*22,CYe+96,5,0,7);ctx.fill();}ctx.globalAlpha=1-A.dim;}
+  if(ex==='dots'){for(let i=0;i<3;i++){const a=(Math.sin(t*4-i*0.8)+1)/2;
+    ctx.globalAlpha=(1-A.dim)*(0.2+a*0.8);ctx.beginPath();ctx.arc(CXm-18+i*18,CYe-86,4.5,0,7);ctx.fill();}ctx.globalAlpha=1-A.dim;}
+  if(ex==='wave'){for(let i=-1;i<=1;i++){const hh=8+(Math.sin(t*9+i*1.1)*0.5+0.5)*22;
+    rr(CXm+i*16-4,CYe+110-hh,8,hh,4);ctx.fill();}}
+  if(ex==='sparkle'){[[CXm-86,CYe-60,1.1],[CXm+92,CYe-30,.8],[CXm+70,CYe+78,1]].forEach((s,i)=>{
+    const a=(Math.sin(t*3+i*1.7)+1)/2,r=s[2]*(3+a*4);ctx.globalAlpha=(1-A.dim)*a;ctx.beginPath();
+    ctx.moveTo(s[0],s[1]-r);ctx.lineTo(s[0]+r*.4,s[1]);ctx.lineTo(s[0],s[1]+r);ctx.lineTo(s[0]-r*.4,s[1]);ctx.closePath();ctx.fill();});ctx.globalAlpha=1-A.dim;}
+  if(ex==='globe'){ctx.save();ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(CXm,CYe-86,11,0,7);ctx.stroke();
+    const a=t*3;ctx.beginPath();ctx.arc(CXm+Math.cos(a)*11,CYe-86+Math.sin(a)*4,3,0,7);ctx.fill();ctx.restore();}
+  if(ex==='warn'){const yy=CYe-104;ctx.save();ctx.fillStyle='#ffd23f';ctx.shadowColor='#ffd23f';
+    ctx.beginPath();ctx.moveTo(CXm,yy);ctx.lineTo(CXm+15,yy+25);ctx.lineTo(CXm-15,yy+25);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#1a1300';rr(CXm-2,yy+8,4,9,2);ctx.fill();ctx.beginPath();ctx.arc(CXm,yy+21,2,0,7);ctx.fill();ctx.restore();
+    ctx.save();ctx.fillStyle='#9fe6ff';ctx.shadowColor='#9fe6ff';ctx.beginPath();
+    ctx.ellipse(rx+30,cy-baseH/2+6,3.5,5,0,0,7);ctx.fill();ctx.restore();}
+  if(ex==='sweat'){ctx.save();ctx.fillStyle='#9fe6ff';ctx.shadowColor='#9fe6ff';
+    const dy=(t*40)%40;ctx.globalAlpha=(1-A.dim)*(1-dy/40);
+    ctx.beginPath();ctx.ellipse(rx+34,cy-20+dy,3.5,5,0,0,7);ctx.fill();ctx.restore();}
+  if(ex==='pack'){ctx.save();for(let i=0;i<8;i++){const a=t*3+i*Math.PI/4,r=26;
+    ctx.globalAlpha=(1-A.dim)*(0.25+0.75*((Math.sin(t*3-i*0.5)+1)/2));
+    ctx.beginPath();ctx.arc(CXm+Math.cos(a)*r,CYe+Math.sin(a)*r,3,0,7);ctx.fill();}ctx.restore();ctx.globalAlpha=1-A.dim;}
+  if(ex==='heart'){ctx.save();ctx.shadowBlur=0;ctx.fillStyle='#ff9ec7';ctx.globalAlpha=(1-A.dim)*0.5;
+    ctx.beginPath();ctx.arc(lx+A.gazeX,cy+baseH/2+6,9,0,7);ctx.arc(rx+A.gazeX,cy+baseH/2+6,9,0,7);ctx.fill();ctx.restore();
+    for(let i=0;i<3;i++){const f=((t*0.45+i*0.33)%1);heart(CXm+(i-1)*34,CYe-50-f*60,8-f*3,(1-f)*0.9*(1-A.dim),'#ff7ab8');}}
+  if(ex==='zzz'){ctx.textAlign='center';
+    [['z',CXm+78,CYe-30,14],['Z',CXm+96,CYe-54,20],['z',CXm+62,CYe-10,12]].forEach((z,i)=>{
+      const f=((t*0.4+i*0.33)%1);ctx.globalAlpha=(1-A.dim)*(1-f)*0.9;ctx.font=`bold ${z[3]}px JetBrains Mono`;
+      ctx.fillStyle=col;ctx.fillText(z[0],z[1],z[2]-f*16);});ctx.globalAlpha=1-A.dim;ctx.textAlign='start';}
+
+  ctx.shadowBlur=0;ctx.fillStyle='#1c1f29';
+  for(let i=-2;i<=2;i++){ctx.beginPath();ctx.arc(CXm+i*11,H-26,2.4,0,7);ctx.fill();}
+  ctx.restore();
+}
+
+const wrap=document.getElementById('controls');
+GROUPS.forEach(g=>{const sec=document.createElement('div');sec.className='group';
+  const h=document.createElement('div');h.className='gh';h.textContent=g.h;sec.appendChild(h);
+  const grid=document.createElement('div');grid.className='grid';
+  g.keys.forEach(key=>{const m=MOODS[key];const b=document.createElement('button');
+    b.className='evt-btn';b.dataset.key=key;b.dataset.on='0';
+    b.innerHTML=`<span class="nm"><span class="swatch" style="background:${m.color}"></span>${m.label}</span><span class="ev">${m.evt}</span>`;
+    b.onclick=()=>{stopDemo();setMood(key);};grid.appendChild(b);});
+  sec.appendChild(grid);wrap.appendChild(sec);});
+
+let demo=null;
+const seq=['awake','listening','thinking','working','searching','browsing','danger','permission','denied','authok','done','subdone','error','rate','compacting','touched','dizzy','waiting','sleep'];
+const demoBtn=document.getElementById('demoBtn');
+function startDemo(){let i=0;demoBtn.dataset.on='1';demoBtn.textContent='⏸ 停止演示';
+  setMood(seq[0]);demo=setInterval(()=>{i=(i+1)%seq.length;setMood(seq[i]);},2400);}
+function stopDemo(){if(demo){clearInterval(demo);demo=null;}demoBtn.dataset.on='0';demoBtn.textContent='▶ 自动演示';}
+demoBtn.onclick=()=>demo?stopDemo():startDemo();
+
+setMood('awake');requestAnimationFrame(frame);
+setTimeout(()=>{if(!demo)setMood('working');},1500);
+</script>
+</body>
+</html>
