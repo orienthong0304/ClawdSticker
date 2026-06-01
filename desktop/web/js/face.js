@@ -8,7 +8,8 @@
  */
 (function () {
   const W = 284, H = 346;
-  const cv = document.getElementById('face'), ctx = cv.getContext('2d');
+  const cv = document.getElementById('face');
+  let ctx = cv.getContext('2d');                 // reassignable: faceSnapshot() swaps it
   const DPR = 2; cv.width = W * DPR; cv.height = H * DPR; ctx.scale(DPR, DPR);
   const CXm = W / 2, CYe = H * 0.45;
   const root = document.documentElement;
@@ -30,6 +31,68 @@
     if (shownKey !== key && tdir >= 0) tdir = -1;
   };
   window.currentMood = function(){ return shownKey; };
+
+  /* Render a single still frame of `key` to an offscreen canvas and return a PNG
+   * data URL. Reuses the live draw() by temporarily swapping the render target
+   * (ctx) and freezing A/target to the mood's resting pose. Synchronous, so no
+   * rAF frame interleaves — safe to mutate and restore the shared state. Works
+   * even when the window is hidden (doesn't depend on the animation loop). */
+  window.faceSnapshot = function (key, scale) {
+    const m = MOODS[key]; if (!m) return null;
+    scale = scale || 2;
+    const oc = document.createElement('canvas');
+    oc.width = W * scale; oc.height = H * scale;
+    const octx = oc.getContext('2d'); octx.scale(scale, scale);
+    const liveCtx = ctx, liveTarget = target, liveA = Object.assign({}, A);
+    ctx = octx; target = m;
+    const tg = hex2rgb(m.color);
+    A.eyeH = m.eyeH; A.eyeW = m.eyeW; A.gazeX = 0; A.gazeY = m.gazeY;
+    A.lid = m.lid || 0; A.glow = (m.glow != null ? m.glow : .18); A.dim = m.dim || 0;
+    A.r = tg[0]; A.g = tg[1]; A.b = tg[2];
+    let url = null;
+    try {
+      draw(0, `rgb(${tg[0]},${tg[1]},${tg[2]})`, 1, 1, 0, 0, 1);
+      url = oc.toDataURL('image/png');
+    } catch (e) { url = null; }
+    ctx = liveCtx; target = liveTarget; Object.assign(A, liveA);
+    return url;
+  };
+
+  /* Render one full animation loop of `key` as `count` PNG data URLs sampled
+   * across `loopSeconds`. Same renderer as the live face, but with deterministic
+   * motion only (busy dots / talk mouth / orbit / sparkle / bob / shake all
+   * derive from sin(t)) plus one synthetic blink per loop — random saccades and
+   * random blinks are dropped so the loop is seamless. Used by the menu-bar tray
+   * to animate the face while the menu is open. Returns an array (or null). */
+  window.faceFrames = function (key, scale, count, loopSeconds) {
+    const m = MOODS[key]; if (!m) return null;
+    scale = scale || 2; count = count || 20; loopSeconds = loopSeconds || 2.2;
+    const oc = document.createElement('canvas');
+    oc.width = W * scale; oc.height = H * scale;
+    const octx = oc.getContext('2d'); octx.scale(scale, scale);
+    const liveCtx = ctx, liveTarget = target, liveA = Object.assign({}, A);
+    ctx = octx; target = m;
+    const tg = hex2rgb(m.color);
+    A.eyeW = m.eyeW; A.gazeX = 0; A.gazeY = m.gazeY; A.lid = m.lid || 0;
+    A.glow = (m.glow != null ? m.glow : .18); A.dim = m.dim || 0;
+    A.r = tg[0]; A.g = tg[1]; A.b = tg[2];
+    const col = `rgb(${tg[0]},${tg[1]},${tg[2]})`;
+    const openish = (m.shape === 'open' || m.shape === 'wink');
+    const out = [];
+    for (let i = 0; i < count; i++) {
+      const p = i / count, t = p * loopSeconds;
+      const breathe = Math.sin(t * 1.6) * 0.012 + 1;
+      const bob = m.bob ? Math.sin(t * 5.5) * 5 : 0;
+      const shake = m.shake ? Math.sin(t * 38) * 3 : 0;
+      const d = p - 0.5;
+      const bs = openish ? (1 - 0.9 * Math.exp(-(d * d * 900))) : 1;  // one blink/loop
+      A.eyeH = m.eyeH;
+      try { draw(t, col, bs, breathe, bob, shake, 1); out.push(oc.toDataURL('image/png')); }
+      catch (e) { /* skip frame */ }
+    }
+    ctx = liveCtx; target = liveTarget; Object.assign(A, liveA);
+    return out.length ? out : null;
+  };
 
   function frame(now) {
     const t = (now - t0) / 1000, dt = Math.min(.05, (now - (frame._l || now)) / 1000);

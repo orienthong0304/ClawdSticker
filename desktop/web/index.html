@@ -17,28 +17,57 @@
     <div class="pill" id="pill"><span class="dot"></span><span id="pillText">offline</span></div>
   </div>
 
-  <div class="modebar">
-    <div class="seg" id="seg">
-      <button data-mode="auto" class="on">跟随 Claude Code</button>
-      <button data-mode="manual">手动</button>
+  <div class="tabs" id="tabs">
+    <button data-tab="face" class="on">表情</button>
+    <button data-tab="usage">余量</button>
+  </div>
+
+  <div class="page" id="page-face">
+    <div class="modebar">
+      <div class="seg" id="seg">
+        <button data-mode="auto" class="on">跟随 Claude Code</button>
+        <button data-mode="manual">手动</button>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="glow" id="glow"></div>
+      <div class="device"><canvas id="face" width="472" height="576"></canvas></div>
+      <div class="nameplate">
+        <span><b id="npLabel">待命</b></span>
+        <span id="npId" style="color:var(--dim)">idle</span>
+        <span class="src" id="npSrc" style="display:none">manual</span>
+      </div>
+    </div>
+
+    <div class="controls" id="controls"></div>
+
+    <div class="cuebar">
+      <div class="gh">测试提示音 · 推送即响</div>
+      <div class="cuerow" id="cuerow"></div>
     </div>
   </div>
 
-  <div class="stage">
-    <div class="glow" id="glow"></div>
-    <div class="device"><canvas id="face" width="472" height="576"></canvas></div>
-    <div class="nameplate">
-      <span><b id="npLabel">待命</b></span>
-      <span id="npId" style="color:var(--dim)">idle</span>
-      <span class="src" id="npSrc" style="display:none">manual</span>
+  <div class="page" id="page-usage" style="display:none">
+    <div class="usage" id="usageCard">
+      <div class="urow" data-k="session">
+        <div class="uhead"><span class="ulabel">5 小时窗口</span><span class="upct" id="uSessionPct">—</span></div>
+        <div class="bar"><div class="fill" id="uSessionFill"></div></div>
+        <div class="ureset" id="uSessionReset">—</div>
+      </div>
+      <div class="urow" data-k="weekly">
+        <div class="uhead"><span class="ulabel">7 天窗口</span><span class="upct" id="uWeeklyPct">—</span></div>
+        <div class="bar"><div class="fill" id="uWeeklyFill"></div></div>
+        <div class="ureset" id="uWeeklyReset">—</div>
+      </div>
+      <div class="ufoot">
+        <span class="ust" id="uStatus">—</span>
+        <span class="uspacer"></span>
+        <span class="uupdated" id="uUpdated"></span>
+        <button class="urefresh" id="uRefresh">刷新</button>
+      </div>
     </div>
-  </div>
-
-  <div class="controls" id="controls"></div>
-
-  <div class="cuebar">
-    <div class="gh">测试提示音 · 推送即响</div>
-    <div class="cuerow" id="cuerow"></div>
+    <div class="usage-empty" id="usageEmpty">暂无余量数据 · 等待抓取或检查登录</div>
   </div>
 
   <div class="log" id="log"></div>

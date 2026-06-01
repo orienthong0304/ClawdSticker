@@ -25,6 +25,42 @@ body{
 .pill.on{color:var(--ink)}
 .pill.on .dot{background:var(--ok);box-shadow:0 0 10px var(--ok)}
 
+/* ── top tabs (表情 / 余量) ── */
+.tabs{width:100%;max-width:520px;display:flex;gap:6px;margin:10px 0 2px;
+  border-bottom:1px solid var(--line);padding-bottom:0}
+.tabs button{flex:0 0 auto;font-family:inherit;font-size:12.5px;cursor:pointer;color:var(--dim);
+  background:transparent;border:0;border-bottom:2px solid transparent;
+  padding:8px 16px;margin-bottom:-1px;transition:.2s}
+.tabs button:hover{color:var(--ink)}
+.tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.page{width:100%;max-width:520px;display:flex;flex-direction:column;align-items:center}
+
+/* ── usage page ── */
+.usage{width:100%;max-width:520px;background:var(--panel);border:1px solid var(--line);
+  border-radius:14px;padding:18px 16px 14px;margin-top:14px;display:flex;flex-direction:column;gap:18px}
+.urow{display:flex;flex-direction:column;gap:8px}
+.uhead{display:flex;align-items:baseline;justify-content:space-between}
+.ulabel{font-size:12px;color:var(--dim);letter-spacing:.04em}
+.upct{font-size:24px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+.bar{width:100%;height:10px;border-radius:6px;background:#0b0d11;
+  border:1px solid var(--line);overflow:hidden}
+.fill{height:100%;width:0;border-radius:6px;transition:width .5s ease,background .3s}
+.fill.lo{background:linear-gradient(90deg,#1f9d6b,var(--ok))}
+.fill.mid{background:linear-gradient(90deg,#caa23a,#ffb020)}
+.fill.hi{background:linear-gradient(90deg,#c4453a,#ff5a5a)}
+.ureset{font-size:10.5px;color:var(--dim);letter-spacing:.04em}
+.ufoot{display:flex;align-items:center;gap:10px;margin-top:2px;
+  padding-top:12px;border-top:1px solid var(--line)}
+.ust{font-size:10.5px;color:var(--dim)}
+.uspacer{flex:1}
+.uupdated{font-size:10px;color:var(--off)}
+.urefresh{font-family:inherit;font-size:11px;cursor:pointer;color:var(--accent);
+  background:transparent;border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);
+  border-radius:999px;padding:6px 14px;transition:.2s}
+.urefresh:hover{background:rgba(56,225,255,.1)}
+.usage-empty{width:100%;max-width:520px;margin-top:14px;padding:30px 16px;text-align:center;
+  font-size:12px;color:var(--off);background:var(--panel);border:1px dashed var(--line);border-radius:14px}
+
 /* ── mode toggle ── */
 .modebar{width:100%;max-width:520px;display:flex;align-items:center;gap:10px;margin:8px 0 4px}
 .seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:3px;flex:1}

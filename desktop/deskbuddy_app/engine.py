@@ -27,6 +27,23 @@ STATES = (
     "error", "rate", "compacting", "touched", "dizzy", "sleep", "speaking",
 )
 
+# Chinese labels + emoji per state (for the menu-bar tray; mirrors web/js/moods.js).
+STATE_LABEL = {
+    "idle": "待命", "listening": "在听", "thinking": "思考中", "working": "执行中",
+    "searching": "读取中", "browsing": "联网中", "danger": "危险！",
+    "permission": "等你确认", "denied": "被拒绝", "bored": "发呆中", "authok": "登录成功",
+    "done": "完成", "subdone": "子任务完成", "error": "出错了", "rate": "被限流",
+    "compacting": "整理记忆", "touched": "摸摸头", "dizzy": "头晕了",
+    "sleep": "睡觉中", "speaking": "说话中",
+}
+STATE_EMOJI = {
+    "idle": "🌙", "listening": "👂", "thinking": "🧠", "working": "⚙️",
+    "searching": "🔍", "browsing": "🌐", "danger": "⚠️", "permission": "✋",
+    "denied": "🚫", "bored": "😐", "authok": "✅", "done": "✅", "subdone": "☑️",
+    "error": "💥", "rate": "⏳", "compacting": "📦", "touched": "💗",
+    "dizzy": "💫", "sleep": "😴", "speaking": "💬",
+}
+
 # Claude Code event → face state.
 EVENT_MAP = {
     "session-start":      "idle",

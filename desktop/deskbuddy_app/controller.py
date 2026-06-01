@@ -15,9 +15,10 @@ import os
 import time
 from collections import deque
 
-from .engine import FaceEngine, EVENT_MAP, DEVICE_NAME, priority
+from .engine import FaceEngine, EVENT_MAP, DEVICE_NAME, USAGE_POLL_SECONDS, priority
 from .ble import BleLink
 from .socket_server import HookSocketServer
+from . import usage
 
 RUN_DIR = os.path.expanduser("~/.deskbuddy")
 PREF_PATH = os.path.join(RUN_DIR, "app.json")
@@ -57,6 +58,10 @@ class AppController:
         self.ble = BleLink(self.log, self._on_connection_change)
         self.sock = HookSocketServer(self.handle_hook_line, self.status_line, self.log)
         self.ui = None
+        self.tray = None
+        self.last_usage = None
+        self._frame_cache = {}                         # state -> [png bytes] for tray animation
+        self._usage_event = asyncio.Event()           # fires to force an immediate refetch
         self._log_ring = deque(maxlen=200)
 
     # ─── lifecycle ────────────────────────────────────────────────────────────
@@ -64,9 +69,13 @@ class AppController:
         self.log("clawdmeter console starting")
         await self.sock.start()
         self.loop.create_task(self.ble.run())
+        self.loop.create_task(self._usage_loop())
 
     def attach_ui(self, ui):
         self.ui = ui
+
+    def attach_tray(self, tray):
+        self.tray = tray
 
     def resync_ui(self):
         """Push everything we know into the UI (called once the page is loaded)."""
@@ -75,8 +84,14 @@ class AppController:
         self.ui.on_mode(self.mode)
         self.ui.on_connection_change(self.ble.connected)
         self.ui.on_state_change(self.engine.desired, "init")
+        if self.last_usage is not None:
+            self.ui.on_usage(self.last_usage)
         for line in list(self._log_ring):
             self.ui.on_log(line)
+        # First face snapshot: snapshot_face reads a value back from evaluate_js,
+        # which must NOT run on the GUI thread (resync_ui is called from the page
+        # `loaded` event). Hop onto the loop thread, where evaluate_js is safe.
+        self.loop.call_soon_threadsafe(self._update_tray, self.engine.desired)
 
     # ─── logging (mirrors to UI log strip) ────────────────────────────────────
     def log(self, msg: str):
@@ -91,10 +106,59 @@ class AppController:
         self.ble.push(state)
         if self.ui:
             self.ui.on_state_change(state, source)
+        self._update_tray(state)
 
     def _on_connection_change(self, connected):
         if self.ui:
             self.ui.on_connection_change(connected)
+        self._update_tray(self.engine.desired)
+
+    # ─── usage polling (host-side, always on; device piggybacks when connected) ─
+    async def _usage_loop(self):
+        if not usage.available():
+            self.log("usage: fetcher unavailable (no bridge import)")
+            return
+        while True:
+            payload = await usage.fetch()
+            self.last_usage = payload
+            if payload is not None:
+                self.log(f"usage -> s={payload['s']}% w={payload['w']}% ({payload['st']})")
+            else:
+                self.log("usage: fetch returned no data")
+            if self.ui:
+                self.ui.on_usage(payload)
+            if self.tray:
+                self.tray.set_usage(payload)
+            await self.ble.write_usage(payload)
+            self._usage_event.clear()
+            try:                                       # sleep, but wake early on refresh
+                await asyncio.wait_for(self._usage_event.wait(), timeout=USAGE_POLL_SECONDS)
+            except asyncio.TimeoutError:
+                pass
+
+    async def refresh_usage(self):
+        self._usage_event.set()                        # nudge the loop to refetch now
+
+    # ─── tray (menu-bar face) ─────────────────────────────────────────────────
+    def _update_tray(self, state):
+        if not self.tray:
+            return
+        png = self.ui.snapshot_face(state) if self.ui else None
+        self.tray.set_state(state, png, self.ble.connected)
+        self.tray.set_usage(self.last_usage)
+        self.loop.create_task(self._render_tray_frames(state))
+
+    async def _render_tray_frames(self, state):
+        """Render (and cache) one animation loop of `state` for the tray face."""
+        if not (self.tray and self.ui):
+            return
+        frames = self._frame_cache.get(state)
+        if frames is None:
+            frames = self.ui.snapshot_frames(state)   # one evaluate_js round-trip
+            if frames:
+                self._frame_cache[state] = frames
+        if frames and state == self.engine.desired:
+            self.tray.set_frames(state, frames)
 
     # ─── inbound from hooks (socket, on loop thread) ──────────────────────────
     def handle_hook_line(self, line: str):

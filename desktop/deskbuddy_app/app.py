@@ -16,8 +16,7 @@ import webview
 from .controller import AppController
 from .api import JsApi
 from .bridge_to_ui import UiBridge
-
-_tray_refs = []          # keep AppKit tray objects alive (avoid GC)
+from .tray import Tray
 
 
 def _web_index():
@@ -28,44 +27,6 @@ def _web_index():
         if os.path.exists(p):
             return p
     raise FileNotFoundError("web/index.html not found")
-
-
-def _setup_tray(window):
-    """Best-effort macOS menu-bar item. Failure is non-fatal (window still works)."""
-    try:
-        from AppKit import (NSStatusBar, NSMenu, NSMenuItem, NSApplication,
-                            NSVariableStatusItemLength)
-        from Foundation import NSObject
-
-        class TrayHandler(NSObject):
-            def show_(self, sender):
-                try:
-                    window.show()
-                except Exception:
-                    pass
-
-            def quit_(self, sender):
-                NSApplication.sharedApplication().terminate_(None)
-
-        bar = NSStatusBar.systemStatusBar()
-        item = bar.statusItemWithLength_(NSVariableStatusItemLength)
-        try:
-            item.button().setTitle_("🐾")
-        except Exception:
-            pass
-        menu = NSMenu.alloc().init()
-        handler = TrayHandler.alloc().init()
-        show = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("显示控制台", "show:", "")
-        show.setTarget_(handler)
-        quit_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("退出", "quit:", "q")
-        quit_item.setTarget_(handler)
-        menu.addItem_(show)
-        menu.addItem_(NSMenuItem.separatorItem())
-        menu.addItem_(quit_item)
-        item.setMenu_(menu)
-        _tray_refs.extend([bar, item, menu, handler])
-    except Exception as e:
-        print(f"tray unavailable: {e}", flush=True)
 
 
 def main():
@@ -105,7 +66,8 @@ def main():
     window.events.closing += on_closing
 
     # Tray must be created on the main thread, before the Cocoa loop blocks.
-    _setup_tray(window)
+    tray = Tray(window)
+    controller.attach_tray(tray)
     webview.start(gui="cocoa")
 
 

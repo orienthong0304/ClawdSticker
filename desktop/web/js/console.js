@@ -35,6 +35,16 @@
     cuerow.appendChild(b);
   });
 
+  // ── top tabs (表情 / 余量) ──────────────────────────────────────────────────
+  $('tabs').querySelectorAll('button').forEach((btn) => {
+    btn.onclick = () => {
+      const tab = btn.dataset.tab;
+      $('tabs').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b === btn));
+      $('page-face').style.display = tab === 'face' ? '' : 'none';
+      $('page-usage').style.display = tab === 'usage' ? '' : 'none';
+    };
+  });
+
   // ── mode toggle ────────────────────────────────────────────────────────────
   $('seg').querySelectorAll('button').forEach((btn) => {
     btn.onclick = () => {
@@ -82,6 +92,43 @@
     log.scrollTop = log.scrollHeight;
   };
 
+  // ── usage page ─────────────────────────────────────────────────────────────
+  function fmtReset(mins) {
+    if (mins == null || mins < 0) return '—';
+    if (mins < 60) return `${mins}m`;
+    if (mins < 1440) return `${Math.floor(mins / 60)}h${mins % 60}m`;
+    const d = Math.floor(mins / 1440), h = Math.floor((mins % 1440) / 60);
+    return `${d}d${h}h`;
+  }
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+  function barClass(pct) { return pct < 60 ? 'lo' : (pct < 85 ? 'mid' : 'hi'); }
+
+  function setMetric(pctEl, fillEl, resetEl, pct, resetMins) {
+    pct = Math.max(0, Math.min(100, pct | 0));
+    pctEl.textContent = `${pct}%`;
+    fillEl.style.width = `${pct}%`;
+    fillEl.className = 'fill ' + barClass(pct);
+    resetEl.textContent = `重置于 ${fmtReset(resetMins)}`;
+  }
+
+  window.uiSetUsage = function (u) {
+    const card = $('usageCard'), empty = $('usageEmpty');
+    if (!u || u.ok === false) {
+      card.style.display = 'none';
+      empty.style.display = '';
+      return;
+    }
+    empty.style.display = 'none';
+    card.style.display = '';
+    setMetric($('uSessionPct'), $('uSessionFill'), $('uSessionReset'), u.s, u.sr);
+    setMetric($('uWeeklyPct'), $('uWeeklyFill'), $('uWeeklyReset'), u.w, u.wr);
+    $('uStatus').textContent = '状态 · ' + (u.st || 'unknown');
+    const now = new Date();
+    $('uUpdated').textContent = `更新于 ${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+  };
+
+  $('uRefresh').onclick = () => { const a = api(); if (a) a.refresh_usage(); };
+
   // ── hydrate once pywebview API is ready ────────────────────────────────────
   function hydrate() {
     const a = api(); if (!a) return;
@@ -91,6 +138,7 @@
       window.uiSetMode(st.mode);
       window.uiSetState(st.state, 'init');
     }).catch(() => {});
+    Promise.resolve(a.get_usage()).then((u) => window.uiSetUsage(u)).catch(() => {});
   }
   window.addEventListener('pywebviewready', hydrate);
   // Fallback in case the event already fired before this listener attached.

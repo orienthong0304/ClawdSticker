@@ -41,3 +41,10 @@ class JsApi:
 
     def get_status(self):
         return self._c.status()
+
+    def get_usage(self):
+        return self._c.last_usage          # dict or None; for initial hydrate
+
+    def refresh_usage(self):
+        self._spawn(self._c.refresh_usage())
+        return True

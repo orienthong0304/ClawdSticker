@@ -1,32 +1,18 @@
 """BleLink — owns the bleak connection to the device, writes STATE_CHAR.
 
-Lifted from bridge/deskbuddy.py's `ble_loop` + `usage_loop`. Runs entirely on
-the asyncio loop thread. The controller pushes the desired state via `push()`;
-the writer coalesces (only writes on change) and re-pushes on every reconnect.
+Lifted from bridge/deskbuddy.py's `ble_loop`. Runs entirely on the asyncio loop
+thread. The controller pushes the desired state via `push()`; the writer
+coalesces (only writes on change) and re-pushes on every reconnect.
 
-Usage polling (keeps the device's original usage screen alive) reuses
-`_fetch_usage` from the existing bridge module if importable; otherwise it is
-silently skipped — the desk-buddy face never depends on it.
+Usage data is NO LONGER fetched here — the controller polls it host-side (see
+usage.py) and hands us each payload via `write_usage()`, which we forward to the
+device's original usage screen only while connected.
 """
 
 import asyncio
 import json
-import os
-import sys
 
-from .engine import DEVICE_NAME, STATE_CHAR, RX_CHAR, USAGE_POLL_SECONDS
-
-# Optional reuse of the existing bridge's usage fetcher (single implementation).
-_fetch_usage = None
-try:
-    _bridge_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-        "bridge")
-    if _bridge_dir not in sys.path:
-        sys.path.insert(0, _bridge_dir)
-    from deskbuddy import _fetch_usage as _fetch_usage  # type: ignore
-except Exception:
-    _fetch_usage = None
+from .engine import DEVICE_NAME, STATE_CHAR, RX_CHAR
 
 
 class BleLink:
@@ -37,10 +23,24 @@ class BleLink:
         self.connected = False
         self.change = asyncio.Event()
         self._want = True                            # whether we want to stay connected
+        self._client = None                          # live BleakClient while connected
+        self.last_usage = None                       # latest usage payload (re-pushed on reconnect)
 
     def push(self, state: str):
         self.desired = state
         self.change.set()
+
+    async def write_usage(self, payload):
+        """Forward a usage payload to the device's RX_CHAR (only while connected)."""
+        self.last_usage = payload
+        if not (self.connected and self._client and payload is not None):
+            return
+        try:
+            await self._client.write_gatt_char(
+                RX_CHAR, json.dumps(payload, separators=(",", ":")).encode(),
+                response=False)
+        except Exception as e:
+            self.log(f"usage write failed: {e}")
 
     async def connect(self):
         self._want = True
@@ -65,11 +65,13 @@ class BleLink:
                 self.log(f"connecting to {dev.address}")
                 async with BleakClient(dev) as client:
                     self.connected = True
+                    self._client = client
                     self.on_connection(True)
                     self.log("connected")
                     last = None
                     self.change.set()                # push current state on (re)connect
-                    usage_task = asyncio.create_task(self._usage_loop(client))
+                    if self.last_usage is not None:  # refresh the device's usage screen
+                        await self.write_usage(self.last_usage)
                     while client.is_connected and self._want:
                         if self.desired != last:
                             try:
@@ -85,31 +87,11 @@ class BleLink:
                             await asyncio.wait_for(self.change.wait(), timeout=10)
                         except asyncio.TimeoutError:
                             pass
-                    usage_task.cancel()
             except Exception as e:
                 self.log(f"ble error: {e}")
             finally:
+                self._client = None
                 if self.connected:
                     self.connected = False
                     self.on_connection(False)
             await asyncio.sleep(2)                    # reconnect backoff
-
-    async def _usage_loop(self, client):
-        if _fetch_usage is None:
-            return
-        while True:
-            try:
-                payload = await asyncio.to_thread(_fetch_usage)
-                if payload is not None:
-                    await client.write_gatt_char(
-                        RX_CHAR, json.dumps(payload, separators=(",", ":")).encode(),
-                        response=False)
-                    self.log(f"usage -> s={payload['s']}% w={payload['w']}% ({payload['st']})")
-            except asyncio.CancelledError:
-                return
-            except Exception as e:
-                self.log(f"usage error: {e}")
-            try:
-                await asyncio.sleep(USAGE_POLL_SECONDS)
-            except asyncio.CancelledError:
-                return
