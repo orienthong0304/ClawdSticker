@@ -7,9 +7,10 @@
 
 // Custom GATT UUIDs for data channel
 #define SERVICE_UUID        "4c41555a-4465-7669-6365-000000000001"
-#define RX_CHAR_UUID        "4c41555a-4465-7669-6365-000000000002"  // host writes here
+#define RX_CHAR_UUID        "4c41555a-4465-7669-6365-000000000002"  // host writes usage JSON here
 #define TX_CHAR_UUID        "4c41555a-4465-7669-6365-000000000003"  // device ack/nack notifies
 #define REQ_CHAR_UUID       "4c41555a-4465-7669-6365-000000000004"  // device-initiated refresh request
+#define STATE_CHAR_UUID     "4c41555a-4465-7669-6365-000000000005"  // host writes face-state string here
 
 #define BLE_BUF_SIZE 512
 
@@ -60,6 +61,7 @@ static NimBLECharacteristic* input_kbd = nullptr;
 static NimBLECharacteristic* tx_char = nullptr;
 static NimBLECharacteristic* rx_char = nullptr;
 static NimBLECharacteristic* req_char = nullptr;
+static NimBLECharacteristic* state_char = nullptr;
 
 static ble_state_t state = BLE_STATE_INIT;
 static bool need_advertise = false;
@@ -67,6 +69,10 @@ static char rx_buf[BLE_BUF_SIZE];
 static volatile bool data_ready = false;
 static volatile bool has_received_data = false;
 static char mac_str[18];
+
+// Desk-buddy face-state stream (separate from the usage RX channel).
+static char state_buf[40];
+static volatile bool state_ready = false;
 
 static void start_advertising() {
     NimBLEAdvertising* adv = NimBLEDevice::getAdvertising();
@@ -131,6 +137,25 @@ class RxCallbacks : public NimBLECharacteristicCallbacks {
         rx_buf[len] = '\0';
         data_ready = true;
         has_received_data = true;
+    }
+};
+
+// Face-state stream: the Mac bridge writes a short state string ("idle",
+// "thinking", …). Trailing whitespace/newlines are trimmed so the parser in
+// main.cpp can match exactly.
+class StateCallbacks : public NimBLECharacteristicCallbacks {
+    void onWrite(NimBLECharacteristic* chr, NimBLEConnInfo& info) override {
+        std::string val = chr->getValue();
+        size_t len = val.length();
+        while (len > 0) {
+            char c = val[len - 1];
+            if (c == '\n' || c == '\r' || c == ' ' || c == '\t') len--;
+            else break;
+        }
+        if (len > sizeof(state_buf) - 1) len = sizeof(state_buf) - 1;
+        memcpy(state_buf, val.c_str(), len);
+        state_buf[len] = '\0';
+        state_ready = true;
     }
 };
 
@@ -201,6 +226,13 @@ void ble_init(void) {
     static ReqCallbacks reqCb;
     req_char->setCallbacks(&reqCb);
 
+    state_char = svc->createCharacteristic(
+        STATE_CHAR_UUID,
+        NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR
+    );
+    static StateCallbacks stateCb;
+    state_char->setCallbacks(&stateCb);
+
     svc->start();
     server->start();
     start_advertising();
@@ -243,6 +275,15 @@ bool ble_has_data(void) {
 const char* ble_get_data(void) {
     data_ready = false;
     return rx_buf;
+}
+
+bool ble_has_state_str(void) {
+    return state_ready;
+}
+
+const char* ble_get_state_str(void) {
+    state_ready = false;
+    return state_buf;
 }
 
 void ble_send_ack(void) {

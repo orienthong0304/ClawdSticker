@@ -41,6 +41,20 @@
 #define IOX_PIN_PA_EN        2     // EXIO2 → audio amp enable
 #define IOX_PIN_PWR_BTN      4     // EXIO4 → PWR button input, active HIGH
 
+// ---- Audio (ES8311 codec + onboard speaker) ----
+// Pins per Waveshare's official board pin_config.h / 15_ES8311 example.
+#define ES8311_ADDR          0x18
+#define I2S_MCLK_PIN         16
+#define I2S_BCLK_PIN         9
+#define I2S_WS_PIN           45
+#define I2S_DOUT_PIN         8     // ESP32 → codec (speaker playback)
+#define I2S_DIN_PIN          10    // codec → ESP32 (mic; unused in MVP)
+// Speaker power-amp enable. Waveshare's official example drives GPIO 46
+// directly (digitalWrite(46, HIGH)); the IO-expander map above also labels
+// EXIO2 as the amp enable. The two disagree (audio was never implemented in
+// this port), so audio.cpp asserts BOTH on start to be safe.
+#define AUDIO_PA_EN_GPIO     46
+
 // ---- Buttons ----
 #define BTN_BACK_GPIO        0     // BOOT — primary, Space (PTT)
 // PWR comes via XCA9554 EXIO4 (see power.cpp); there is no secondary button.

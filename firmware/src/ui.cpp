@@ -1,5 +1,6 @@
 #include "ui.h"
 #include "splash.h"
+#include "face.h"
 #include <lvgl.h>
 #include "logo.h"
 #include "icons.h"
@@ -432,9 +433,13 @@ void ui_init(void) {
     init_usage_screen(scr);
     init_bluetooth_screen(scr);
     splash_init(scr);
+    face_init(scr);
 
     if (splash_get_root()) {
         lv_obj_add_event_cb(splash_get_root(), global_click_cb, LV_EVENT_CLICKED, NULL);
+    }
+    if (face_get_root()) {
+        lv_obj_add_event_cb(face_get_root(), global_click_cb, LV_EVENT_CLICKED, NULL);
     }
 
     logo_img = lv_image_create(scr);
@@ -495,14 +500,20 @@ void ui_tick_anim(void) {
 static screen_t prev_non_splash_screen = SCREEN_USAGE;
 static void apply_battery_visibility(void) {
     if (!battery_img) return;
-    if (current_screen == SCREEN_SPLASH) lv_obj_add_flag(battery_img, LV_OBJ_FLAG_HIDDEN);
-    else                                  lv_obj_clear_flag(battery_img, LV_OBJ_FLAG_HIDDEN);
+    // Face & splash are full-bleed surfaces — keep the status chrome off them.
+    if (current_screen == SCREEN_SPLASH || current_screen == SCREEN_FACE)
+        lv_obj_add_flag(battery_img, LV_OBJ_FLAG_HIDDEN);
+    else
+        lv_obj_clear_flag(battery_img, LV_OBJ_FLAG_HIDDEN);
 }
 
 static void global_click_cb(lv_event_t* e) {
     (void)e;
-    if (current_screen == SCREEN_SPLASH) ui_show_screen(prev_non_splash_screen);
-    else                                  ui_show_screen(SCREEN_SPLASH);
+    // On the face screen a tap cycles expressions (lets you review all 7 on
+    // the device). On other screens a tap cycles screens. PWR always cycles
+    // screens.
+    if (current_screen == SCREEN_FACE) face_next_state();
+    else                                ui_cycle_screen();
 }
 
 static void ble_reset_click_cb(lv_event_t* e) {
@@ -514,8 +525,10 @@ void ui_show_screen(screen_t screen) {
     lv_obj_add_flag(usage_container, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ble_container, LV_OBJ_FLAG_HIDDEN);
     splash_hide();
+    face_hide();
 
     switch (screen) {
+    case SCREEN_FACE:       face_show(); break;
     case SCREEN_SPLASH:     splash_show(); break;
     case SCREEN_USAGE:      lv_obj_clear_flag(usage_container, LV_OBJ_FLAG_HIDDEN); break;
     case SCREEN_BLUETOOTH:  lv_obj_clear_flag(ble_container, LV_OBJ_FLAG_HIDDEN); break;
@@ -523,8 +536,11 @@ void ui_show_screen(screen_t screen) {
     }
 
     if (logo_img) {
-        if (screen == SCREEN_SPLASH) lv_obj_add_flag(logo_img, LV_OBJ_FLAG_HIDDEN);
-        else                          lv_obj_clear_flag(logo_img, LV_OBJ_FLAG_HIDDEN);
+        // Full-bleed surfaces (face, splash) hide the logo chrome.
+        if (screen == SCREEN_SPLASH || screen == SCREEN_FACE)
+            lv_obj_add_flag(logo_img, LV_OBJ_FLAG_HIDDEN);
+        else
+            lv_obj_clear_flag(logo_img, LV_OBJ_FLAG_HIDDEN);
     }
 
     if (screen != SCREEN_SPLASH) prev_non_splash_screen = screen;
@@ -533,11 +549,13 @@ void ui_show_screen(screen_t screen) {
 }
 
 void ui_cycle_screen(void) {
+    // Rotation: FACE → USAGE → BLUETOOTH → FACE. SPLASH is retired.
     screen_t next;
     switch (current_screen) {
+    case SCREEN_FACE:      next = SCREEN_USAGE;     break;
     case SCREEN_USAGE:     next = SCREEN_BLUETOOTH; break;
-    case SCREEN_BLUETOOTH: next = SCREEN_USAGE;     break;
-    default:               next = SCREEN_USAGE;     break;
+    case SCREEN_BLUETOOTH: next = SCREEN_FACE;      break;
+    default:               next = SCREEN_FACE;      break;
     }
     ui_show_screen(next);
 }

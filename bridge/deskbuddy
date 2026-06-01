@@ -1,0 +1,4 @@
+#!/bin/bash
+# deskbuddy CLI/daemon wrapper — runs deskbuddy.py with the bridge venv.
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$DIR/.venv/bin/python" "$DIR/deskbuddy.py" "$@"

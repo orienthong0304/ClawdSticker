@@ -7,6 +7,7 @@ firmware/.vscode/
 
 # Claude Code
 .claude/
+.playwright-mcp/
 
 # Node tooling deps (npm install --no-save)
 tools/node_modules/
@@ -18,3 +19,6 @@ daemon/.venv/
 # Python bytecode cache
 __pycache__/
 *.pyc
+
+# Mac bridge venv & runtime
+bridge/.venv/

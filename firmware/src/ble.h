@@ -16,6 +16,10 @@ const char* ble_get_mac_address(void);
 void ble_clear_bonds(void);
 bool ble_has_data(void);
 const char* ble_get_data(void);
+
+// Desk-buddy face-state stream (host writes a state string to STATE_CHAR).
+bool ble_has_state_str(void);
+const char* ble_get_state_str(void);
 void ble_send_ack(void);
 void ble_send_nack(void);
 void ble_request_refresh(void);

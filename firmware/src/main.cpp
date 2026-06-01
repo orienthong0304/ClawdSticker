@@ -7,6 +7,7 @@
 #include "data.h"
 #include "ui.h"
 #include "ble.h"
+#include "face.h"
 #include "splash.h"
 #include "usage_rate.h"
 #include "idle.h"
@@ -18,20 +19,40 @@
 #include "hal/input_hal.h"
 #include "hal/power_hal.h"
 #include "hal/imu_hal.h"
+#include "hal/audio_hal.h"
 
 static UsageData usage = {};
 
-// ---- LVGL draw buffers (PSRAM, partial render mode) ----
-#define BUF_LINES 40
+// ---- LVGL draw buffers (PSRAM, partial render mode, full-height) ----
 static uint16_t* buf1 = nullptr;
 static uint16_t* buf2 = nullptr;
 
 static uint32_t my_tick(void) { return millis(); }
 
+// Flush profiler — flip to 1 to print flush calls/bytes/QSPI-busy per second
+// over serial (used to diagnose tearing/frame-drops; see project memory).
+#ifndef PERF_PROBE
+#define PERF_PROBE 0
+#endif
 static void my_flush_cb(lv_display_t* disp, const lv_area_t* area, uint8_t* px_map) {
     int32_t w = area->x2 - area->x1 + 1;
     int32_t h = area->y2 - area->y1 + 1;
+#if PERF_PROBE
+    static uint32_t calls = 0, bytes = 0, busy_us = 0, last = 0;
+    uint32_t t0 = micros();
     display_hal_draw_bitmap(area->x1, area->y1, w, h, (uint16_t*)px_map);
+    busy_us += micros() - t0;
+    calls++; bytes += w * h * 2;
+    uint32_t now = millis();
+    if (now - last >= 1000) {
+        Serial.printf("PERF flush/s: calls=%lu bytes=%lu(%luKB) qspi_busy=%lums\n",
+                      (unsigned long)calls, (unsigned long)bytes,
+                      (unsigned long)(bytes / 1024), (unsigned long)(busy_us / 1000));
+        calls = bytes = busy_us = 0; last = now;
+    }
+#else
+    display_hal_draw_bitmap(area->x1, area->y1, w, h, (uint16_t*)px_map);
+#endif
     lv_display_flush_ready(disp);
 }
 
@@ -141,12 +162,40 @@ static void send_screenshot() {
     heap_caps_free(sbuf);
 }
 
+// Play a cue tone when ENTERING waiting/done/error (edge-triggered, so a
+// state written repeatedly doesn't re-beep).
+static void maybe_cue(face_state_t st) {
+    static face_state_t prev = FACE_STATE_COUNT;
+    if (st == prev) return;
+    prev = st;
+    switch (st) {
+    case FACE_WAITING: audio_hal_cue(AUDIO_CUE_WAITING); break;
+    case FACE_DONE:    audio_hal_cue(AUDIO_CUE_DONE);    break;
+    case FACE_ERROR:   audio_hal_cue(AUDIO_CUE_ERROR);   break;
+    default: break;
+    }
+}
+
 static void check_serial_cmd() {
     while (Serial.available()) {
         char c = Serial.read();
         if (c == '\n' || c == '\r') {
             cmd_buf[cmd_pos] = '\0';
-            if (strcmp(cmd_buf, "screenshot") == 0) send_screenshot();
+            if (strcmp(cmd_buf, "screenshot") == 0) {
+                send_screenshot();
+            } else if (strncmp(cmd_buf, "face ", 5) == 0) {
+                // QA/dev hook: `face <state>` jumps to the face screen and
+                // sets the expression. Mirrors the future BLE state write.
+                face_state_t st;
+                if (face_state_from_str(cmd_buf + 5, &st)) {
+                    ui_show_screen(SCREEN_FACE);
+                    face_set_state(st);
+                    maybe_cue(st);
+                    Serial.printf("face -> %s\n", face_state_name(st));
+                } else {
+                    Serial.printf("unknown face state: %s\n", cmd_buf + 5);
+                }
+            }
             cmd_pos = 0;
         } else if (cmd_pos < CMD_BUF_SIZE - 1) {
             cmd_buf[cmd_pos++] = c;
@@ -182,13 +231,19 @@ void setup() {
     lv_init();
     lv_tick_set_cb(my_tick);
 
-    buf1 = (uint16_t*)heap_caps_malloc(W * BUF_LINES * 2, MALLOC_CAP_SPIRAM);
-    buf2 = (uint16_t*)heap_caps_malloc(W * BUF_LINES * 2, MALLOC_CAP_SPIRAM);
+    // Full-height draw buffers: each dirty bounding box flushes in a single
+    // contiguous QSPI write instead of many 40-line chunks. Without a TE
+    // sync this is the main lever against tearing — one write seam per frame
+    // instead of several — and it removes the per-chunk address-window
+    // overhead that dominated the heavy animation states.
+    const uint32_t buf_px = (uint32_t)W * H;
+    buf1 = (uint16_t*)heap_caps_malloc(buf_px * 2, MALLOC_CAP_SPIRAM);
+    buf2 = (uint16_t*)heap_caps_malloc(buf_px * 2, MALLOC_CAP_SPIRAM);
 
     lv_display_t* disp = lv_display_create(W, H);
     lv_display_set_color_format(disp, LV_COLOR_FORMAT_RGB565);
     lv_display_set_flush_cb(disp, my_flush_cb);
-    lv_display_set_buffers(disp, buf1, buf2, W * BUF_LINES * 2,
+    lv_display_set_buffers(disp, buf1, buf2, buf_px * 2,
                            LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_add_event_cb(disp, rounder_cb, LV_EVENT_INVALIDATE_AREA, NULL);
 
@@ -198,11 +253,12 @@ void setup() {
 
     ble_init();
     input_hal_init();
+    audio_hal_init();   // ES8311 + I2S cue tones (no-op on boards without audio)
 
     ui_init();
     ui_update_ble_status(ble_get_state(), ble_get_device_name(), ble_get_mac_address());
     ui_update_battery(power_hal_battery_pct(), power_hal_is_charging());
-    ui_show_screen(SCREEN_SPLASH);
+    ui_show_screen(SCREEN_FACE);
 
     Serial.printf("Dashboard ready (%s, %dx%d), waiting for data on BLE...\n",
         board_caps().name, W, H);
@@ -264,8 +320,7 @@ void loop() {
 
         if (power_hal_pwr_pressed()) {
             if (!idle_consume_wake_press()) {
-                if (ui_get_current_screen() == SCREEN_SPLASH) splash_next();
-                else                                          ui_cycle_screen();
+                ui_cycle_screen();  // FACE → USAGE → BLUETOOTH → FACE
             }
         }
     }
@@ -287,6 +342,20 @@ void loop() {
     }
 
     check_serial_cmd();
+
+    // Desk-buddy: a state string written over BLE drives the expression face.
+    if (ble_has_state_str()) {
+        const char* s = ble_get_state_str();
+        face_state_t st;
+        if (face_state_from_str(s, &st)) {
+            ui_show_screen(SCREEN_FACE);
+            face_set_state(st);
+            maybe_cue(st);
+            Serial.printf("BLE state -> %s\n", s);
+        } else {
+            Serial.printf("BLE unknown state: '%s'\n", s);
+        }
+    }
 
     if (ble_has_data()) {
         if (parse_json(ble_get_data(), &usage)) {

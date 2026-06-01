@@ -3,9 +3,10 @@
 #include "ble.h"
 
 enum screen_t {
-    SCREEN_SPLASH,
+    SCREEN_FACE,        // desk-buddy expression face (boot default)
     SCREEN_USAGE,
     SCREEN_BLUETOOTH,
+    SCREEN_SPLASH,      // upstream claudepix creature — retired from rotation
     SCREEN_COUNT,
 };
 
