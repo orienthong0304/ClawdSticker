@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Clawdmeter Console — macOS app icon
+  clawpet face, "thinking" state. Primary color #7dd3fc.
+  1024x1024 canvas. Content tile ~824px centered (≈80%), macOS Big Sur+ rounded square.
+  Geometry mirrors docs/v2/clawpet-face.html (open eyes radius=w*0.42, raised brows,
+  white highlight dot, 3 thinking dots) and docs/UI_PREVIEW.html palette (#7dd3fc).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- subtle vertical sheen on the near-black tile, like AMOLED panel under glass -->
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0"   stop-color="#0e0f14"/>
+      <stop offset="0.5" stop-color="#08080b"/>
+      <stop offset="1"   stop-color="#050507"/>
+    </linearGradient>
+
+    <!-- soft cyan ambient glow behind the face -->
+    <radialGradient id="glow" cx="50%" cy="44%" r="50%">
+      <stop offset="0"    stop-color="#7dd3fc" stop-opacity="0.55"/>
+      <stop offset="0.34" stop-color="#7dd3fc" stop-opacity="0.22"/>
+      <stop offset="0.72" stop-color="#7dd3fc" stop-opacity="0.04"/>
+      <stop offset="1"    stop-color="#7dd3fc" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- eye outer glow (drop shadow that bleeds the cyan light) -->
+    <filter id="eyeGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="14" result="b"/>
+      <feFlood flood-color="#7dd3fc" flood-opacity="0.85"/>
+      <feComposite in2="b" operator="in" result="g"/>
+      <feMerge>
+        <feMergeNode in="g"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- lighter glow for brows / dots -->
+    <filter id="softGlow" x="-120%" y="-120%" width="340%" height="340%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="7" result="b"/>
+      <feFlood flood-color="#7dd3fc" flood-opacity="0.7"/>
+      <feComposite in2="b" operator="in" result="g"/>
+      <feMerge>
+        <feMergeNode in="g"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- clip for the rounded tile so the glow/sheen never spill past the corners -->
+    <clipPath id="tileClip">
+      <rect x="100" y="100" width="824" height="824" rx="184.4" ry="184.4"/>
+    </clipPath>
+  </defs>
+
+  <!-- transparent margin all around; content tile is the near-black rounded square -->
+  <g clip-path="url(#tileClip)">
+    <rect x="100" y="100" width="824" height="824" fill="url(#tile)"/>
+
+    <!-- ambient cyan glow behind face -->
+    <circle cx="512" cy="468" r="430" fill="url(#glow)"/>
+
+    <!-- ===== clawpet face (thinking) ===== -->
+    <!-- eyes: rounded rectangles, w=190 h=255, corner r = w*0.42 = 79.8 -->
+    <!-- gap from center ~ +/-126 -> eye centers at 386 and 638; eye y center 452 -->
+    <g filter="url(#eyeGlow)" fill="#7dd3fc">
+      <rect x="291" y="324.5" width="190" height="255" rx="79.8" ry="79.8"/>
+      <rect x="543" y="324.5" width="190" height="255" rx="79.8" ry="79.8"/>
+    </g>
+
+    <!-- white highlight dots, top-left of each eye -->
+    <g fill="#ffffff">
+      <ellipse cx="350" cy="392" rx="34" ry="27" opacity="0.92"/>
+      <ellipse cx="602" cy="392" rx="34" ry="27" opacity="0.92"/>
+    </g>
+
+    <!-- raised "up" brows: slight inner-tilt thin rounded bars above the eyes -->
+    <g filter="url(#softGlow)" stroke="#7dd3fc" stroke-width="20" stroke-linecap="round" opacity="0.9">
+      <!-- left brow: outer (left) slightly lower, inner (right) raised -> gentle up/in -->
+      <line x1="300" y1="288" x2="452" y2="272"/>
+      <!-- right brow: mirror -->
+      <line x1="724" y1="288" x2="572" y2="272"/>
+    </g>
+
+    <!-- 3 thinking dots below the face -->
+    <g filter="url(#softGlow)" fill="#7dd3fc">
+      <circle cx="446" cy="712" r="20" opacity="0.55"/>
+      <circle cx="512" cy="712" r="20" opacity="0.8"/>
+      <circle cx="578" cy="712" r="20" opacity="1"/>
+    </g>
+  </g>
+</svg>

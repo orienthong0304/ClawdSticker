@@ -1,0 +1,78 @@
+name: Release macOS app
+
+# Builds ClawdSticker.app and publishes it as an (unsigned) .dmg when a version
+# tag (v*) is pushed. arm64 only (Apple Silicon).
+#
+# No Apple Developer Program membership required: the app is shipped unsigned
+# (PyInstaller applies an ad-hoc signature so it runs on Apple Silicon). Users
+# clear the download quarantine once on first launch — see the release notes
+# body below. To add real signing + notarization later (needs Developer ID),
+# reintroduce the codesign / notarytool / stapler steps; no other changes needed.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write          # create the GitHub Release
+
+jobs:
+  build:
+    runs-on: macos-14       # Apple Silicon runner
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Derive version from tag
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        working-directory: desktop
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Build .app
+        working-directory: desktop
+        env:
+          CLAWDSTICKER_VERSION: ${{ steps.ver.outputs.version }}
+        run: pyinstaller packaging/ClawdSticker.spec --noconfirm --clean
+
+      - name: Build .dmg
+        id: dmg
+        run: |
+          brew install create-dmg
+          VER="${{ steps.ver.outputs.version }}"
+          DMG="ClawdSticker-${VER}-arm64.dmg"
+          # create-dmg exits non-zero on cosmetic AppleScript warnings; guard on the file.
+          create-dmg \
+            --volname "ClawdSticker ${VER}" \
+            --window-size 640 360 \
+            --icon "ClawdSticker.app" 150 180 \
+            --app-drop-link 480 180 \
+            "$DMG" "desktop/dist/ClawdSticker.app" || test -f "$DMG"
+          echo "dmg=$DMG" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.dmg.outputs.dmg }}
+          generate_release_notes: true
+          body: |
+            ## ClawdSticker ${{ steps.ver.outputs.version }} · macOS (Apple Silicon)
+
+            **未签名构建 / Unsigned build** — 首次打开需一次性清除下载隔离标记:
+
+            1. 下载 `.dmg`,打开后把 **ClawdSticker** 拖进「应用程序」/ Applications
+            2. 终端运行(一次即可):
+               ```
+               xattr -dr com.apple.quarantine "/Applications/ClawdSticker.app"
+               ```
+               或:右键 App →「打开」;macOS 15+ 在「系统设置 → 隐私与安全性」点「仍要打开」。
+
+            > First launch is blocked by Gatekeeper because the app isn't notarized.
+            > Run the `xattr` command above once, then open normally.

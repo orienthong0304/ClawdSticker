@@ -12,13 +12,19 @@ import os
 import sys
 
 # Optional reuse of the existing bridge's usage fetcher (single source of truth).
+# Look for bridge/deskbuddy.py both in the dev tree and inside a PyInstaller
+# bundle (where it's shipped as data under sys._MEIPASS/bridge).
 _fetch_usage = None
+_bridge_dirs = []
+_meipass = getattr(sys, "_MEIPASS", None)
+if _meipass:
+    _bridge_dirs.append(os.path.join(_meipass, "bridge"))
+_bridge_dirs.append(os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "bridge"))
+for _d in _bridge_dirs:
+    if os.path.isdir(_d) and _d not in sys.path:
+        sys.path.insert(0, _d)
 try:
-    _bridge_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-        "bridge")
-    if _bridge_dir not in sys.path:
-        sys.path.insert(0, _bridge_dir)
     from deskbuddy import _fetch_usage as _fetch_usage  # type: ignore
 except Exception:
     _fetch_usage = None

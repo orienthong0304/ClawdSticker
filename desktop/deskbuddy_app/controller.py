@@ -63,13 +63,19 @@ class AppController:
         self._frame_cache = {}                         # state -> [png bytes] for tray animation
         self._usage_event = asyncio.Event()           # fires to force an immediate refetch
         self._log_ring = deque(maxlen=200)
+        self._ble_task = None
+        self._usage_task = None
+        self._bg = set()                               # strong refs for fire-and-forget tasks
 
     # ─── lifecycle ────────────────────────────────────────────────────────────
     async def start(self):
         self.log("clawdmeter console starting")
         await self.sock.start()
-        self.loop.create_task(self.ble.run())
-        self.loop.create_task(self._usage_loop())
+        # Keep strong references — bare loop.create_task() lets the GC collect a
+        # still-pending task ("Task was destroyed but it is pending"), which can
+        # silently kill the BLE link.
+        self._ble_task = self.loop.create_task(self.ble.run())
+        self._usage_task = self.loop.create_task(self._usage_loop())
 
     def attach_ui(self, ui):
         self.ui = ui
@@ -146,7 +152,8 @@ class AppController:
         png = self.ui.snapshot_face(state) if self.ui else None
         self.tray.set_state(state, png, self.ble.connected)
         self.tray.set_usage(self.last_usage)
-        self.loop.create_task(self._render_tray_frames(state))
+        t = self.loop.create_task(self._render_tray_frames(state))
+        self._bg.add(t); t.add_done_callback(self._bg.discard)
 
     async def _render_tray_frames(self, state):
         """Render (and cache) one animation loop of `state` for the tray face."""

@@ -29,6 +29,18 @@ def _web_index():
     raise FileNotFoundError("web/index.html not found")
 
 
+def _set_accessory_policy():
+    """Run as a menu-bar accessory (no Dock icon). LSUIElement in the bundle's
+    Info.plist handles this for the packaged app, but pywebview forces a Regular
+    activation policy at startup, so we flip it back here once the page loads."""
+    try:
+        from AppKit import NSApplication, NSApplicationActivationPolicyAccessory
+        NSApplication.sharedApplication().setActivationPolicy_(
+            NSApplicationActivationPolicyAccessory)
+    except Exception:
+        pass
+
+
 def main():
     loop = asyncio.new_event_loop()
     controller = AppController(loop)
@@ -40,15 +52,20 @@ def main():
 
     threading.Thread(target=run_loop, daemon=True, name="asyncio").start()
 
+    # Autostart (LaunchAgent) passes --hidden so login doesn't pop the console;
+    # the window stays hidden and only the menu-bar item appears.
+    hidden = ("--hidden" in sys.argv) or bool(os.environ.get("DESKBUDDY_HIDDEN"))
+
     api = JsApi(controller, loop)
     window = webview.create_window(
-        "Clawdmeter Console",
+        "ClawdSticker",
         url=_web_index(),
         js_api=api,
         width=560,
         height=940,
         min_size=(460, 600),
         background_color="#070809",
+        hidden=hidden,
     )
     ui = UiBridge(window)
     controller.attach_ui(ui)
@@ -57,6 +74,7 @@ def main():
     def on_loaded():
         ui.ready = True
         controller.resync_ui()
+        _set_accessory_policy()        # menu-bar app: no Dock icon (overrides pywebview)
     window.events.loaded += on_loaded
 
     # Close = hide (keep the asyncio thread + hooks alive); tray re-shows / quits.

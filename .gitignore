@@ -25,3 +25,7 @@ bridge/.venv/
 
 # Mac desktop console app venv
 desktop/.venv/
+
+# PyInstaller build artifacts (.app is built locally, not committed)
+desktop/build/
+desktop/dist/

@@ -61,6 +61,28 @@ connection status.
   `web/js/moods.js` mirrors firmware `face.cpp` (20 canonical states + colors);
   `face.js` exposes `faceSnapshot()` for the tray.
 
+## Package + install (.app + login autostart)
+
+```bash
+desktop/.venv/bin/pip install pyinstaller
+packaging/build.sh      # -> desktop/dist/Clawdmeter.app (no-Dock, ad-hoc signed)
+packaging/install.sh    # -> ~/Applications + LaunchAgent (silent autostart)
+```
+
+`build.sh` runs PyInstaller (`packaging/Clawdmeter.spec`) — the bundle's
+Info.plist sets `LSUIElement` (menu-bar app, no Dock icon) and
+`NSBluetoothAlwaysUsageDescription` (required, else macOS kills BLE access);
+`web/` and the bridge `deskbuddy` module (for `_fetch_usage`) are bundled.
+
+`install.sh` copies the app to `~/Applications`, **retires the old
+`com.deskbuddy.bridge` autostart** (one BLE owner only), and installs a
+`com.clawdmeter.console` LaunchAgent that launches the app **hidden** (`--hidden`)
+at every login — only the menu-bar item shows; click it for the face/usage, or
+显示控制台 for the window. First launch may prompt for Bluetooth → Allow.
+
+Manage: `launchctl bootout gui/$(id -u)/com.clawdmeter.console` (stop) /
+`launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.clawdmeter.console.plist` (start).
+
 ## Not yet (roadmap)
 
 Device settings (brightness/flip/idle) · WiFi provisioning · AI config — each is

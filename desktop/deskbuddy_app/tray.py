@@ -160,6 +160,8 @@ class Tray:
                 def show_(self, sender):
                     try:
                         tray.window.show()
+                        # accessory (no-Dock) apps must explicitly come to front
+                        NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
                     except Exception:
                         pass
 
