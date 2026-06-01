@@ -4,9 +4,10 @@
 // implementation so shared code (main.cpp) can call these unconditionally.
 
 enum audio_cue_t {
-    AUDIO_CUE_WAITING,   // attention — two rising beeps
+    AUDIO_CUE_WAITING,   // attention — two rising beeps (permission)
     AUDIO_CUE_DONE,      // success   — three rising beeps
     AUDIO_CUE_ERROR,     // failure   — two descending beeps
+    AUDIO_CUE_DANGER,    // alarm     — urgent high/low triad
 };
 
 // Bring up the codec + I2S and start the audio task. Safe to call once in

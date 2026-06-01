@@ -30,3 +30,9 @@ void display_hal_tick(void);
 
 // LVGL flush regions must be even-aligned on the CO5300; harmless on others.
 void display_hal_round_area(int32_t* x1, int32_t* y1, int32_t* x2, int32_t* y2);
+
+// Optional 180° flip (for upside-down desk mounting). Boards that support it
+// flip both the flushed bitmap and the touch coordinates, and persist the
+// setting across reboots. No-op / returns false on boards without support.
+void display_hal_set_flip180(bool on);
+bool display_hal_get_flip180(void);

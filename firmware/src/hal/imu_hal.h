@@ -9,3 +9,9 @@
 void    imu_hal_init(void);
 void    imu_hal_tick(void);
 uint8_t imu_hal_rotation_quadrant(void);
+
+// Edge-triggered shake detector for the desk-buddy `dizzy` mood: returns true
+// ONCE when a deliberate shake has just been detected (then re-arms after a
+// debounce). Boards without shake detection return false. Reads happen inside
+// imu_hal_tick() so the I2C bus has a single owner.
+bool    imu_hal_shake(void);

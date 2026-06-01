@@ -162,16 +162,18 @@ static void send_screenshot() {
     heap_caps_free(sbuf);
 }
 
-// Play a cue tone when ENTERING waiting/done/error (edge-triggered, so a
-// state written repeatedly doesn't re-beep).
+// Play a cue tone when ENTERING a key state (edge-triggered, so a state written
+// repeatedly doesn't re-beep). permission/danger/done/error chirp; the rest are
+// silent per docs/v2 (denied/rate/etc. stay quiet to avoid noise fatigue).
 static void maybe_cue(face_state_t st) {
     static face_state_t prev = FACE_STATE_COUNT;
     if (st == prev) return;
     prev = st;
     switch (st) {
-    case FACE_WAITING: audio_hal_cue(AUDIO_CUE_WAITING); break;
-    case FACE_DONE:    audio_hal_cue(AUDIO_CUE_DONE);    break;
-    case FACE_ERROR:   audio_hal_cue(AUDIO_CUE_ERROR);   break;
+    case FACE_PERMISSION: audio_hal_cue(AUDIO_CUE_WAITING); break;
+    case FACE_DANGER:     audio_hal_cue(AUDIO_CUE_DANGER);  break;
+    case FACE_DONE:       audio_hal_cue(AUDIO_CUE_DONE);    break;
+    case FACE_ERROR:      audio_hal_cue(AUDIO_CUE_ERROR);   break;
     default: break;
     }
 }
@@ -195,6 +197,14 @@ static void check_serial_cmd() {
                 } else {
                     Serial.printf("unknown face state: %s\n", cmd_buf + 5);
                 }
+            } else if (strncmp(cmd_buf, "screen ", 7) == 0) {
+                // QA/dev hook: switch screens over serial (PWR does this on-device).
+                const char* a = cmd_buf + 7;
+                if      (strcmp(a, "usage") == 0)     ui_show_screen(SCREEN_USAGE);
+                else if (strcmp(a, "face") == 0)      ui_show_screen(SCREEN_FACE);
+                else if (strcmp(a, "bluetooth") == 0) ui_show_screen(SCREEN_BLUETOOTH);
+                else { Serial.printf("unknown screen: %s\n", a); }
+                Serial.printf("screen -> %s\n", a);
             }
             cmd_pos = 0;
         } else if (cmd_pos < CMD_BUF_SIZE - 1) {
@@ -273,6 +283,9 @@ void loop() {
     ble_tick();
     power_hal_tick();
     imu_hal_tick();
+    // Shake the device → dizzy (board-local mood, overrides the host state
+    // briefly then falls back). No-op on boards without IMU shake detection.
+    if (imu_hal_shake()) face_local_override(FACE_DIZZY);
     splash_tick();
     // Rotation transition (blank + ramp) would fight the idle fade — skip
     // ticks while the panel is dark. A rotation that happens during sleep
@@ -348,7 +361,9 @@ void loop() {
         const char* s = ble_get_state_str();
         face_state_t st;
         if (face_state_from_str(s, &st)) {
-            ui_show_screen(SCREEN_FACE);
+            // Update the face state, but DON'T force the face screen — that
+            // would yank the user off the Usage/Bluetooth screen on every
+            // event. The face is the boot default; PWR cycles screens.
             face_set_state(st);
             maybe_cue(st);
             Serial.printf("BLE state -> %s\n", s);

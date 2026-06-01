@@ -132,3 +132,7 @@ void display_hal_round_area(int32_t* x1, int32_t* y1, int32_t* x2, int32_t* y2) 
     *x2 = *x2 | 1;
     *y2 = *y2 | 1;
 }
+
+// 180° user-flip not implemented on this board (IMU drives rotation here).
+void display_hal_set_flip180(bool on) { (void)on; }
+bool display_hal_get_flip180(void) { return false; }

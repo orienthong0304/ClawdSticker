@@ -27,6 +27,8 @@ struct ToneStep { uint16_t freq; uint16_t ms; };  // freq 0 = silent gap
 static const ToneStep CUE_WAITING[] = {{880, 120}, {0, 45}, {1175, 150}};
 static const ToneStep CUE_DONE[]    = {{660, 90}, {784, 90}, {1047, 170}};
 static const ToneStep CUE_ERROR[]   = {{440, 150}, {0, 35}, {294, 220}};
+// Urgent alarm — high/low/high triad with snappy gaps.
+static const ToneStep CUE_DANGER[]  = {{1320, 90}, {0, 30}, {988, 90}, {0, 30}, {1320, 130}};
 
 static void play_tone(uint16_t freq, uint16_t ms) {
     const int n = (int)SAMPLE_RATE * ms / 1000;
@@ -72,6 +74,7 @@ static void audio_task(void* arg) {
             case AUDIO_CUE_WAITING: play_seq(CUE_WAITING, 3); break;
             case AUDIO_CUE_DONE:    play_seq(CUE_DONE, 3);    break;
             case AUDIO_CUE_ERROR:   play_seq(CUE_ERROR, 3);   break;
+            case AUDIO_CUE_DANGER:  play_seq(CUE_DANGER, 5);  break;
             }
         }
     }

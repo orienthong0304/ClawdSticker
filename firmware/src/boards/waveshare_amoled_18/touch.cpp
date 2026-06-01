@@ -1,4 +1,5 @@
 #include "../../hal/touch_hal.h"
+#include "../../hal/display_hal.h"
 #include "board.h"
 #include <Arduino.h>
 #include <Wire.h>
@@ -64,7 +65,13 @@ void touch_hal_read(uint16_t* x, uint16_t* y, bool* pressed) {
         touch_data_ready = false;
         ft3168_read_into_shared_state();
     }
-    *x = touch_x;
-    *y = touch_y;
+    // Flip touch to match a 180°-rotated display (FT3168 reports raw coords).
+    if (display_hal_get_flip180()) {
+        *x = LCD_WIDTH  - 1 - touch_x;
+        *y = LCD_HEIGHT - 1 - touch_y;
+    } else {
+        *x = touch_x;
+        *y = touch_y;
+    }
     *pressed = touch_pressed;
 }

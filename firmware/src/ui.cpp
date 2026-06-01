@@ -5,6 +5,7 @@
 #include "logo.h"
 #include "icons.h"
 #include "hal/board_caps.h"
+#include "hal/display_hal.h"
 
 // Custom fonts (scaled for 314 PPI, ~1.9x from original 165 PPI)
 LV_FONT_DECLARE(font_tiempos_56);
@@ -203,6 +204,7 @@ static void format_reset_time(int mins, char* buf, size_t len) {
 // Forward decls — callbacks defined near ui_show_screen below
 static void global_click_cb(lv_event_t* e);
 static void ble_reset_click_cb(lv_event_t* e);
+static void ui_rotate_click_cb(lv_event_t* e);
 
 static lv_obj_t* make_panel(lv_obj_t* parent, int x, int y, int w, int h) {
     lv_obj_t* panel = lv_obj_create(parent);
@@ -403,6 +405,25 @@ static void init_bluetooth_screen(lv_obj_t* scr) {
     lv_obj_set_style_text_font(reset_lbl, L.bt_device_font, 0);
     lv_obj_set_style_text_color(reset_lbl, COL_DIM, 0);
 
+    // Flip-screen button (desk-buddy 1.8 only; flip is a no-op on the 2.16).
+    if (board_caps().height < 460) {
+        int rot_y = reset_y + L.bt_reset_zone_h + 12;
+        lv_obj_t* rot_zone = lv_obj_create(ble_container);
+        lv_obj_set_pos(rot_zone, L.margin, rot_y);
+        lv_obj_set_size(rot_zone, L.content_w, 48);
+        lv_obj_set_style_bg_color(rot_zone, COL_PANEL, 0);
+        lv_obj_set_style_bg_opa(rot_zone, LV_OPA_COVER, 0);
+        lv_obj_set_style_radius(rot_zone, 8, 0);
+        lv_obj_set_style_border_width(rot_zone, 0, 0);
+        lv_obj_clear_flag(rot_zone, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_event_cb(rot_zone, ui_rotate_click_cb, LV_EVENT_CLICKED, NULL);
+        lv_obj_t* rot_lbl = lv_label_create(rot_zone);
+        lv_label_set_text(rot_lbl, "Flip Screen 180");
+        lv_obj_set_style_text_font(rot_lbl, L.bt_device_font, 0);
+        lv_obj_set_style_text_color(rot_lbl, COL_DIM, 0);
+        lv_obj_center(rot_lbl);
+    }
+
     lv_obj_t* lbl_credit = lv_label_create(ble_container);
     lv_label_set_text(lbl_credit, "Built by @hermannbjorgvin");
     lv_obj_set_style_text_font(lbl_credit, L.bt_credit_1_font, 0);
@@ -509,16 +530,23 @@ static void apply_battery_visibility(void) {
 
 static void global_click_cb(lv_event_t* e) {
     (void)e;
-    // On the face screen a tap cycles expressions (lets you review all 7 on
-    // the device). On other screens a tap cycles screens. PWR always cycles
-    // screens.
-    if (current_screen == SCREEN_FACE) face_next_state();
+    // On the face screen a tap pets the buddy → `touched` (board-local mood,
+    // falls back to the host state after a couple of seconds). On other screens
+    // a tap cycles screens. PWR always cycles screens. (Per-state review is on
+    // the serial `face <state>` command.)
+    if (current_screen == SCREEN_FACE) face_local_override(FACE_TOUCHED);
     else                                ui_cycle_screen();
 }
 
 static void ble_reset_click_cb(lv_event_t* e) {
     (void)e;
     ble_clear_bonds();
+}
+
+static void ui_rotate_click_cb(lv_event_t* e) {
+    (void)e;
+    display_hal_set_flip180(!display_hal_get_flip180());
+    lv_obj_invalidate(lv_screen_active());   // full redraw in the new orientation
 }
 
 void ui_show_screen(screen_t screen) {

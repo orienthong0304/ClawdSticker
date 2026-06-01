@@ -64,3 +64,6 @@ void imu_hal_tick(void) {
 }
 
 uint8_t imu_hal_rotation_quadrant(void) { return current_rotation; }
+
+// No desk-buddy shake mood on the upstream board.
+bool imu_hal_shake(void) { return false; }
